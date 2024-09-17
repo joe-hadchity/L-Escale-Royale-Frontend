@@ -1,0 +1,30 @@
+/* Tailwind CSS imports */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Global custom styles */
+body {
+  font-family: 'Roboto', sans-serif;
+  background-color: #f4f4f4;
+}
+
+h1, h2, h3 {
+  color: #333;
+}
+
+/* Custom global utility classes */
+.text-primary {
+  color: #3490dc;
+}
+
+.bg-primary {
+  background-color: #3490dc;
+}
+
+/* Global margin and padding reset */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
