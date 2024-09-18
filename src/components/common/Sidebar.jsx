@@ -57,6 +57,14 @@ const Sidebar = () => {
                     Tableau de Bord
                 </li>
 
+                <li 
+                    className={`nav-item p-3 rounded ${activeItem === '/admin/category-management' ? 'bg-info text-white' : 'bg-white text-dark border border-light shadow-sm'}`} 
+                    style={{ cursor: 'pointer' }} 
+                    onClick={() => handleItemClick('/admin/category-management')}
+                >
+                    Gestion des Catégories
+                </li>
+
                 {/* User Management */}
                 <li 
                     className={`nav-item p-3 rounded ${activeItem === '/admin/user-management' ? 'bg-info text-white' : 'bg-white text-dark border border-light shadow-sm'}`} 
@@ -65,7 +73,13 @@ const Sidebar = () => {
                 >
                     Gestion des Utilisateurs
                 </li>
-
+                <li 
+                    className={`nav-item p-3 rounded ${activeItem === '/admin/ingredient-management' ? 'bg-info text-white' : 'bg-white text-dark border border-light shadow-sm'}`} 
+                    style={{ cursor: 'pointer' }} 
+                    onClick={() => handleItemClick('/admin/ingredient-management')}
+                >
+                    Gestion des Ingrédients
+                </li>
                 {/* Item Management */}
                 <li 
                     className={`nav-item p-3 rounded ${activeItem === '/admin/item-management' ? 'bg-info text-white' : 'bg-white text-dark border border-light shadow-sm'}`} 
@@ -77,11 +91,11 @@ const Sidebar = () => {
 
                 {/* Category Management */}
                 <li 
-                    className={`nav-item p-3 rounded ${activeItem === '/admin/category-management' ? 'bg-info text-white' : 'bg-white text-dark border border-light shadow-sm'}`} 
+                    className={`nav-item p-3 rounded ${activeItem === '/admin/supplier-payments' ? 'bg-info text-white' : 'bg-white text-dark border border-light shadow-sm'}`} 
                     style={{ cursor: 'pointer' }} 
-                    onClick={() => handleItemClick('/admin/category-management')}
+                    onClick={() => handleItemClick('/admin/supplier-payments')}
                 >
-                    Gestion des Catégories
+                    Paiement Fournisseur
                 </li>
 
                 {/* History */}
@@ -94,14 +108,7 @@ const Sidebar = () => {
                 </li>
 
                 {/* Supplier Payments */}
-                <li 
-                    className={`nav-item p-3 rounded ${activeItem === '/admin/supplier-payments' ? 'bg-info text-white' : 'bg-white text-dark border border-light shadow-sm'}`} 
-                    style={{ cursor: 'pointer' }} 
-                    onClick={() => handleItemClick('/admin/supplier-payments')}
-                >
-                    Paiement Fournisseur
-                </li>
-
+               
                 {/* Logout */}
                 <li
     className={`nav-item p-3 rounded ${activeItem === '/admin/logout' 

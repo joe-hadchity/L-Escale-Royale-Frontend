@@ -18,12 +18,7 @@ const CategoryManagement = () => {
     const fetchCategories = async () => {
         try {
             const response = await axios.get(`${process.env.REACT_APP_API_URL}/Item/GetAllCategories`);
-            
-            // Parse each JSON string entry in the response
-            const parsedCategories = response.data.map(item => JSON.parse(item));
-            
-            console.log('Parsed Categories:', parsedCategories); // Debugging log
-            setCategories(parsedCategories);
+            setCategories(response.data);
         } catch (error) {
             console.error('Error fetching categories:', error);
         }

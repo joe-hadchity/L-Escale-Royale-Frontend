@@ -6,34 +6,40 @@ const History = () => {
     const [history, setHistory] = useState([]);
     const [searchOrder, setSearchOrder] = useState('');
     const [searchDate, setSearchDate] = useState('');
+    const [error, setError] = useState(null);
 
-    // Fetch history on component mount
+    // Fetch history when component mounts or when search filters change
     useEffect(() => {
-        fetchHistory();
-    }, []);
+        if (searchOrder || searchDate) {
+            fetchFilteredHistory();
+        }
+    }, [searchOrder, searchDate]);
 
-    // Fetch the history from the backend
-    const fetchHistory = async () => {
+    // Fetch orders based on either order number or date
+    const fetchFilteredHistory = async () => {
         try {
-            const response = await axios.get(`${process.env.REACT_APP_API_URL}/Order/GetOrderHistory`);
+            let apiUrl = `${process.env.REACT_APP_API_URL}/Order/GetOrdersinProcess`; // Fallback for filtered orders
+            if (searchOrder) {
+                // If order number is searched, use the specific order number API
+                apiUrl = `${process.env.REACT_APP_API_URL}/Order/GetOrderbyOrderNumber/${searchOrder}`;
+            } else if (searchDate) {
+                // If date is searched, use the specific date filter API
+                apiUrl = `${process.env.REACT_APP_API_URL}/Order/GetOrderbyDay?date=${searchDate}`;
+            }
+
+            const response = await axios.get(apiUrl);
             setHistory(response.data);
         } catch (error) {
             console.error('Error fetching history:', error);
+            setError('Failed to fetch orders.');
         }
     };
-
-    // Filter history by order number
-    const filteredHistory = history.filter(entry => {
-        const matchesOrder = entry.ordernumber.includes(searchOrder);
-        const matchesDate = entry.dateofOrder.includes(searchDate);
-        return matchesOrder && matchesDate;
-    });
 
     return (
         <div className="container mx-auto p-4">
             <h1 className="mb-4">Historique des commandes</h1>
-            
-            {/* Search bar */}
+
+            {/* Search Bar */}
             <div className="mb-4">
                 <InputGroup className="mb-3">
                     <Form.Control
@@ -47,13 +53,16 @@ const History = () => {
                         value={searchDate}
                         onChange={(e) => setSearchDate(e.target.value)}
                     />
-                    <Button variant="primary" onClick={fetchHistory}>
+                    <Button variant="primary" onClick={fetchFilteredHistory}>
                         Rechercher
                     </Button>
                 </InputGroup>
             </div>
 
-            {/* History table */}
+            {/* Display Error if Exists */}
+            {error && <p className="text-danger">{error}</p>}
+
+            {/* History Table */}
             <Table striped bordered hover responsive>
                 <thead className="table-dark">
                     <tr>
@@ -64,13 +73,13 @@ const History = () => {
                     </tr>
                 </thead>
                 <tbody>
-                    {filteredHistory.length > 0 ? (
-                        filteredHistory.map((entry, index) => (
+                    {history.length > 0 ? (
+                        history.map((entry, index) => (
                             <tr key={index}>
                                 <td>{index + 1}</td>
-                                <td>{entry.action}</td>
-                                <td>{entry.dateofOrder}</td>
-                                <td>{entry.ordernumber}</td>
+                                <td>{entry.action || 'N/A'}</td>
+                                <td>{entry.dateofOrder || 'N/A'}</td>
+                                <td>{entry.ordernumber || 'N/A'}</td>
                             </tr>
                         ))
                     ) : (
