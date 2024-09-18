@@ -1,38 +1,123 @@
-.App {
-  text-align: center;
+/* Styling for the table */
+.table {
+  margin-top: 1.5rem;
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+  background-color: #ffffff;
 }
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
+.table-hover tbody tr:hover {
+  background-color: #f1f3f5;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
+.table th, .table td {
+  padding: 0.75rem 1.5rem;
+  text-align: left;
+  border-bottom: 1px solid #dee2e6;
 }
 
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
+.table th {
+  background-color: #495057;
+  color: #ffffff;
+}
+
+.table td {
+  vertical-align: middle;
+}
+
+.table .btn {
+  padding: 0.4rem 0.75rem;
+  font-size: 0.9rem;
+  margin-right: 0.5rem;
+}
+
+.card {
+  border-radius: 0.5rem;
+  border: none;
+}
+
+.card-title {
+  font-size: 1.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.card-text {
+  font-size: 1rem;
+}
+
+/* General layout adjustments */
+.admin-page {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
+  min-height: 100vh;
+}
+
+.admin-content {
+  flex-grow: 1;
+  padding: 2rem;
+  background-color: #f8f9fa;
+}
+
+h1, h2 {
+  font-size: 2rem;
+  font-weight: bold;
+  color: #343a40;
+}
+
+/* Spacing adjustments */
+.container {
+  padding: 2rem;
+}
+
+/* Button hover effect */
+.btn:hover {
+  background-color: #007bff;
   color: white;
 }
 
-.App-link {
-  color: #61dafb;
+/* Table Grid Compact Layout */
+.table-status .col-4, .table-status .col-md-3 {
+  padding: 5px;
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.table-status .p-2 {
+  padding: 10px;
+}
+
+.table-status .rounded {
+  border-radius: 10px;
+}
+
+.table-status .bg-success, .table-status .bg-danger {
+  transition: transform 0.2s ease-in-out;
+}
+
+.table-status .bg-success:hover, .table-status .bg-danger:hover {
+  transform: scale(1.05);
+}
+
+/* Order List Items */
+.order-list .list-group-item {
+  transition: all 0.2s ease-in-out;
+}
+
+.order-list .list-group-item:hover {
+  transform: scale(1.02);
+  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.order-list button {
+  min-width: 150px;
+}
+.clickable-card {
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.clickable-card:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.btn-group .btn {
+  transition: background-color 0.3s ease-in-out;
 }
