@@ -11,9 +11,9 @@ const UserManagement = () => {
     const [showModal, setShowModal] = useState(false); // Show modal for adding/updating user
     const [currentUser, setCurrentUser] = useState(null); // Track current user being added/updated
     const [username, setUsername] = useState('');
-    const [role, setRole] = useState(''); // Change role to dropdown value (admin/staff)
-    const [pin, setPin] = useState(''); // New pin state
-    const [confirmPin, setConfirmPin] = useState(''); // Re-enter pin state
+    const [role, setRole] = useState(''); // Role dropdown value (admin/staff)
+    const [pin, setPin] = useState(''); // New PIN state
+    const [confirmPin, setConfirmPin] = useState(''); // Re-enter PIN state
 
     useEffect(() => {
         fetchUsers();
@@ -21,8 +21,10 @@ const UserManagement = () => {
 
     const fetchUsers = async () => {
         try {
-            const apiUrl = `${process.env.REACT_APP_API_URL}/user/GetUser`;
+            const apiUrl = `${process.env.REACT_APP_API_URL}/User/GetAllUsers`;
             const response = await axios.get(apiUrl);
+
+            console.log('Fetched Users:', response.data);  // Inspect API data
 
             const fetchedUsers = Array.isArray(response.data) ? response.data : [];
 
@@ -30,13 +32,12 @@ const UserManagement = () => {
                 setError('No users found.');
             } else {
                 const usersList = fetchedUsers.map(user => ({
-                    id: user._id?.$oid || user._id.toString(),
-                    name: user.username,
-                    role: user.role,
+                    id: user.Id, // Assuming 'Id' is used for unique identification
+                    username: user.Username,
+                    role: user.Role,
                 }));
                 setUsers(usersList);
             }
-
             setLoading(false);
         } catch (err) {
             setError('Failed to fetch users.');
@@ -47,15 +48,15 @@ const UserManagement = () => {
     const handleShowModal = (user = null) => {
         if (user) {
             setCurrentUser(user);
-            setUsername(user.name);
+            setUsername(user.username);
             setRole(user.role);
-            setPin(''); // Reset pin when updating
+            setPin(''); // Reset PIN when updating
             setConfirmPin(''); // Reset confirmPin when updating
         } else {
             setCurrentUser(null);
             setUsername('');
             setRole('admin'); // Default to 'admin' for new users
-            setPin(''); // Reset pin for new user
+            setPin(''); // Reset PIN for new user
             setConfirmPin(''); // Reset confirmPin for new user
         }
         setShowModal(true);
@@ -67,29 +68,37 @@ const UserManagement = () => {
             return;
         }
 
-        const user = { username, role, pin }; // Include pin in the user object
+        const user = { Username: username, Role: role, Pin: pin }; // Send data as per backend format
 
         try {
             if (currentUser) {
-                // Update user
-                await axios.put(`${process.env.REACT_APP_API_URL}/user/Update/${currentUser.id}`, user);
+                // Update user by ID
+                const updateUrl = `${process.env.REACT_APP_API_URL}/User/UpdateUserById/${currentUser.id}`;
+                await axios.put(updateUrl, user);
+                console.log(`User updated: ${currentUser.id}`);
             } else {
-                // Create user
-                await axios.post(`${process.env.REACT_APP_API_URL}/user/Create`, user);
+                // Create new user
+                const createUrl = `${process.env.REACT_APP_API_URL}/User/CreateUser`;
+                await axios.post(createUrl, user);
+                console.log('User created');
             }
             setShowModal(false);
             fetchUsers(); // Refresh user list
         } catch (error) {
             console.error('Error saving user:', error);
+            alert('Failed to save user.');
         }
     };
 
     const handleDeleteUser = async (id) => {
         try {
-            await axios.delete(`${process.env.REACT_APP_API_URL}/user/Delete/${id}`);
+            const deleteUrl = `${process.env.REACT_APP_API_URL}/User/DeleteUserByUser/${id}`;
+            await axios.delete(deleteUrl);
+            console.log(`User deleted: ${id}`);
             fetchUsers(); // Refresh user list after deletion
         } catch (error) {
             console.error('Error deleting user:', error);
+            alert('Failed to delete user.');
         }
     };
 
@@ -118,7 +127,7 @@ const UserManagement = () => {
                 <thead className="thead-dark">
                     <tr>
                         <th>ID</th>
-                        <th>Nom</th>
+                        <th>Nom d'utilisateur</th>
                         <th>Rôle</th>
                         <th>Actions</th>
                     </tr>
@@ -126,8 +135,8 @@ const UserManagement = () => {
                 <tbody>
                     {users.map(user => (
                         <tr key={user.id}>
-                            <td>{user.id}</td>
-                            <td>{user.name}</td>
+                            <td>{user.id}</td> 
+                            <td>{user.username}</td>
                             <td>{user.role}</td>
                             <td>
                                 <Button variant="info" onClick={() => handleShowModal(user)}>

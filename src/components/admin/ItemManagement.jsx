@@ -21,8 +21,11 @@ const ItemManagement = () => {
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState(""); // Dine-in price
   const [pricedel, setPriceDelivery] = useState(""); // Delivery price
-  const [ingredients, setIngredients] = useState([]); // The selected ingredients
-
+  const [ingredients, setIngredients] = useState([]); // Selected ingredients
+  const [availableIngredients, setAvailableIngredients] = useState([]); // List of available ingredients
+  const [selectedIngredientCategory, setSelectedIngredientCategory] = useState(
+    ""
+  );
   const [loadingItems, setLoadingItems] = useState(false);
 
   useEffect(() => {
@@ -33,7 +36,7 @@ const ItemManagement = () => {
   const fetchCategories = async () => {
     try {
       const response = await axios.get(
-        `${process.env.REACT_APP_API_URL}/Item/GetAllCategories`
+        `${process.env.REACT_APP_API_URL}/Category/GetAllCategories`
       );
       setCategories(response.data);
     } catch (error) {
@@ -79,7 +82,7 @@ const ItemManagement = () => {
     if (item) {
       setModalTitle("Mettre à jour l'article");
       setCurrentItem(item);
-      setItemName(item.ItemName || "");
+      setItemName(item.Name || "");
       setDescription(item.Description || "");
       setPrice(item.price || "");
       setPriceDelivery(item.pricedel || "");
@@ -99,24 +102,21 @@ const ItemManagement = () => {
   const handleSaveItem = async () => {
     try {
       const newItem = {
-        ItemName: itemName,
-        Category: selectedCategory,
+        Name: itemName, // Changed from ItemName to Name
+        CategoryName: selectedCategory, // Updated to CategoryName
         Description: description,
         price: parseFloat(price), // Dine-in price
         pricedel: parseFloat(pricedel), // Delivery price as 'pricedel'
-        Ingredients: ingredients,
+        Ingredients: ingredients, // Add ingredients to the item
       };
 
       if (currentItem) {
         await axios.put(
-          `${process.env.REACT_APP_API_URL}/Item/UpdateItem/${currentItem.ItemName}`,
+          `${process.env.REACT_APP_API_URL}/Item/UpdateItemByName/${currentItem.Name}`,
           newItem
         );
       } else {
-        await axios.post(
-          `${process.env.REACT_APP_API_URL}/Item/CreateItem`,
-          newItem
-        );
+        await axios.post(`${process.env.REACT_APP_API_URL}/Item/CreateItem`, newItem);
       }
 
       setShowModal(false);
@@ -129,7 +129,7 @@ const ItemManagement = () => {
   const handleDeleteItem = async (name) => {
     try {
       await axios.delete(
-        `${process.env.REACT_APP_API_URL}/Item/DeleteItem/${name}`
+        `${process.env.REACT_APP_API_URL}/Item/DeleteItemByName/${name}`
       );
       fetchItemsByCategory(selectedCategory); // Refresh items after delete
     } catch (error) {
@@ -137,9 +137,14 @@ const ItemManagement = () => {
     }
   };
 
-  // Handle selecting ingredients from a category dropdown
-  const handleIngredientSelect = (category, ingredient) => {
-    setIngredients([...ingredients, ingredient]); // Add selected ingredient to the list
+  // Handle selecting an ingredient from a category
+  const handleAddIngredient = (ingredient) => {
+    setIngredients([...ingredients, ingredient]);
+  };
+
+  const handleRemoveIngredient = (index) => {
+    const updatedIngredients = ingredients.filter((_, i) => i !== index);
+    setIngredients(updatedIngredients);
   };
 
   return (
@@ -156,8 +161,8 @@ const ItemManagement = () => {
             >
               <option value="">Sélectionner une catégorie</option>
               {categories.map((category, index) => (
-                <option key={index} value={category.name}>
-                  {category.name}
+                <option key={index} value={category.Name}>
+                  {category.Name}
                 </option>
               ))}
             </Form.Select>
@@ -194,20 +199,14 @@ const ItemManagement = () => {
                   {items.map((item, index) => (
                     <tr key={index}>
                       <td>{index + 1}</td>
+                      <td>{item.Name ? item.Name : "Nom indisponible"}</td>
                       <td>
-                        {item.ItemName ? item.ItemName : "Nom indisponible"}
-                      </td>{" "}
-                      {/* Ensure this property exists */}
-                      <td>
-                        {item.Category
-                          ? item.Category
+                        {item.CategoryName
+                          ? item.CategoryName
                           : "Catégorie indisponible"}
-                      </td>{" "}
-                      {/* Ensure this property exists */}
-                      <td>{item.price ? item.price.toFixed(2) : "N/A"} $</td>
-                      <td>
-                        {item.pricedel ? item.pricedel.toFixed(2) : "N/A"} $
                       </td>
+                      <td>{item.price ? item.price.toFixed(2) : "N/A"} €</td>
+                      <td>{item.pricedel ? item.pricedel.toFixed(2) : "N/A"} €</td>
                       <td>
                         <Button
                           variant="info"
@@ -218,7 +217,7 @@ const ItemManagement = () => {
                         </Button>
                         <Button
                           variant="danger"
-                          onClick={() => handleDeleteItem(item.ItemName)}
+                          onClick={() => handleDeleteItem(item.Name)}
                         >
                           Supprimer
                         </Button>
@@ -246,8 +245,8 @@ const ItemManagement = () => {
               <Form.Select value={selectedCategory} disabled>
                 <option value="">Sélectionner une catégorie</option>
                 {categories.map((category, index) => (
-                  <option key={index} value={category.name}>
-                    {category.name}
+                  <option key={index} value={category.Name}>
+                    {category.Name}
                   </option>
                 ))}
               </Form.Select>
@@ -288,9 +287,50 @@ const ItemManagement = () => {
               <Form.Control
                 type="number"
                 placeholder="Entrer le prix pour livraison"
-                value={pricedel} // Use 'pricedel'
-                onChange={(e) => setPriceDelivery(e.target.value)} // Update 'pricedel'
+                value={pricedel}
+                onChange={(e) => setPriceDelivery(e.target.value)}
               />
+            </Form.Group>
+
+            <Form.Group className="mb-3">
+              <Form.Label>Ajouter des ingrédients</Form.Label>
+              {ingredients.map((ingredient, index) => (
+                <InputGroup className="mb-2" key={index}>
+                  <Form.Control
+                    type="text"
+                    value={ingredient.Name || ""}
+                    placeholder="Nom de l'ingrédient"
+                    readOnly
+                  />
+                  <Form.Control
+                    type="text"
+                    value={ingredient.Price || ""}
+                    placeholder="Prix de l'ingrédient"
+                    readOnly
+                  />
+                  <Button
+                    variant="danger"
+                    onClick={() => handleRemoveIngredient(index)}
+                  >
+                    Supprimer
+                  </Button>
+                </InputGroup>
+              ))}
+              <DropdownButton
+                className="mb-3"
+                title="Ajouter un ingrédient"
+                onSelect={(ingredient) => handleAddIngredient(ingredient)}
+              >
+                {ingredientsCategories.map((category, index) => (
+                  <Dropdown.Item
+                    key={index}
+                    eventKey={category.Name}
+                    onClick={() => handleAddIngredient(category)}
+                  >
+                    {category.Name}
+                  </Dropdown.Item>
+                ))}
+              </DropdownButton>
             </Form.Group>
           </Form>
         </Modal.Body>
