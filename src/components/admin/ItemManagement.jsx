@@ -23,9 +23,7 @@ const ItemManagement = () => {
   const [pricedel, setPriceDelivery] = useState(""); // Delivery price
   const [ingredients, setIngredients] = useState([]); // Selected ingredients
   const [availableIngredients, setAvailableIngredients] = useState([]); // List of available ingredients
-  const [selectedIngredientCategory, setSelectedIngredientCategory] = useState(
-    ""
-  );
+  const [selectedIngredientCategory, setSelectedIngredientCategory] = useState("");
   const [loadingItems, setLoadingItems] = useState(false);
 
   useEffect(() => {
@@ -33,33 +31,74 @@ const ItemManagement = () => {
     fetchIngredients(); // Fetch all ingredient categories
   }, []);
 
+  // Fetch categories for the item
   const fetchCategories = async () => {
     try {
-      const response = await axios.get(
-        `${process.env.REACT_APP_API_URL}/Category/GetAllCategories`
-      );
+      console.log("Fetching categories...");
+      const response = await axios.get(`${process.env.REACT_APP_API_URL}/Category/GetAllCategories`);
+      console.log("Fetched categories:", response.data);
       setCategories(response.data);
     } catch (error) {
       console.error("Error fetching categories:", error);
     }
   };
 
+  // Fetch ingredients and parse the nested arrays
   const fetchIngredients = async () => {
     try {
-      const response = await axios.get(
-        `${process.env.REACT_APP_API_URL}/Ingredients`
-      );
-      setIngredientsCategories(response.data);
+      console.log("Fetching ingredients...");
+      const response = await axios.get(`${process.env.REACT_APP_API_URL}/Ingredients/GetAllIngredients`);
+      console.log("Fetched ingredients:", response.data);
+      
+      // Safely parse the ingredients, handling undefined cases
+      const parsedIngredients = parseIngredients(response.data); 
+      console.log("Parsed ingredients categories:", parsedIngredients);
+      setIngredientsCategories(parsedIngredients);
     } catch (error) {
       console.error("Error fetching ingredients:", error);
     }
   };
 
+  // Helper function to parse ingredients data structure with safety checks
+  const parseIngredients = (data) => {
+    return data.map((categoryObj, index) => {
+      // Check if 'Ingredient' exists and is an object
+      if (categoryObj && categoryObj.Ingredient && typeof categoryObj.Ingredient === 'object') {
+        const categoryKey = Object.keys(categoryObj.Ingredient)[0];
+        const ingredientsArray = categoryObj.Ingredient[categoryKey];
+        
+        if (Array.isArray(ingredientsArray)) {
+          return {
+            category: categoryKey,
+            ingredients: ingredientsArray.map((ingredientObj) =>
+              typeof ingredientObj === "string" ? JSON.parse(ingredientObj) : ingredientObj
+            ),
+          };
+        } else {
+          console.warn(`No ingredients array for category: ${categoryKey}`);
+          return {
+            category: categoryKey,
+            ingredients: [], // Fallback if no ingredients array
+          };
+        }
+      } else {
+        console.warn(`Invalid data structure at index ${index}:`, categoryObj);
+        return {
+          category: "Unknown",
+          ingredients: [], // Fallback for malformed data
+        };
+      }
+    });
+  };
+
+  // Fetch items based on the selected category
   const fetchItemsByCategory = async (category) => {
     try {
+      console.log(`Fetching items for category: ${category}`);
       setLoadingItems(true);
       const apiUrl = `${process.env.REACT_APP_API_URL}/Item/GetItemsByCategory/${category}`;
       const response = await axios.get(apiUrl);
+      console.log(`Fetched items for category ${category}:`, response.data);
       setItems(response.data);
       setLoadingItems(false);
     } catch (error) {
@@ -70,6 +109,7 @@ const ItemManagement = () => {
 
   const handleCategoryChange = (event) => {
     const category = event.target.value;
+    console.log("Selected category:", category);
     setSelectedCategory(category);
     if (category) {
       fetchItemsByCategory(category);
@@ -78,8 +118,25 @@ const ItemManagement = () => {
     }
   };
 
+  const handleIngredientCategoryChange = (event) => {
+    const category = event.target.value;
+    console.log("Selected ingredient category:", category);
+    setSelectedIngredientCategory(category);
+    const selectedCategory = ingredientsCategories.find(
+      (cat) => cat.category === category
+    );
+    if (selectedCategory) {
+      setAvailableIngredients(selectedCategory.ingredients);
+      console.log("Available ingredients:", selectedCategory.ingredients);
+    } else {
+      setAvailableIngredients([]);
+      console.log("No available ingredients for the selected category.");
+    }
+  };
+
   const handleShowModal = (item = null) => {
     if (item) {
+      console.log("Updating item:", item);
       setModalTitle("Mettre à jour l'article");
       setCurrentItem(item);
       setItemName(item.Name || "");
@@ -88,6 +145,7 @@ const ItemManagement = () => {
       setPriceDelivery(item.pricedel || "");
       setIngredients(item.Ingredients || []);
     } else {
+      console.log("Adding a new item.");
       setModalTitle("Ajouter un article");
       setCurrentItem(null);
       setItemName("");
@@ -109,28 +167,41 @@ const ItemManagement = () => {
         pricedel: parseFloat(pricedel), // Delivery price as 'pricedel'
         Ingredients: ingredients, // Add ingredients to the item
       };
-
+  
+      console.log("Saving item:", newItem);
+  
       if (currentItem) {
+        // Updating the existing item
         await axios.put(
           `${process.env.REACT_APP_API_URL}/Item/UpdateItemByName/${currentItem.Name}`,
           newItem
         );
+        console.log("Item updated successfully.");
       } else {
+        // Creating a new item
         await axios.post(`${process.env.REACT_APP_API_URL}/Item/CreateItem`, newItem);
+        console.log("Item created successfully.");
       }
-
+  
       setShowModal(false);
       fetchItemsByCategory(selectedCategory);
     } catch (error) {
-      console.error("Error saving item:", error);
+      // Check for 409 Conflict
+      if (error.response && error.response.status === 409) {
+        console.error("Error: Item with this name already exists.");
+        alert("An item with this name already exists. Please choose a different name.");
+      } else {
+        console.error("Error saving item:", error);
+      }
     }
   };
+  
 
   const handleDeleteItem = async (name) => {
     try {
-      await axios.delete(
-        `${process.env.REACT_APP_API_URL}/Item/DeleteItemByName/${name}`
-      );
+      console.log("Deleting item:", name);
+      await axios.delete(`${process.env.REACT_APP_API_URL}/Item/DeleteItemByName/${name}`);
+      console.log(`Item ${name} deleted successfully.`);
       fetchItemsByCategory(selectedCategory); // Refresh items after delete
     } catch (error) {
       console.error("Error deleting item:", error);
@@ -139,10 +210,16 @@ const ItemManagement = () => {
 
   // Handle selecting an ingredient from a category
   const handleAddIngredient = (ingredient) => {
-    setIngredients([...ingredients, ingredient]);
+    if (!ingredients.includes(ingredient)) {
+      console.log("Adding ingredient:", ingredient);
+      setIngredients([...ingredients, ingredient]);
+    } else {
+      console.log("Ingredient already selected:", ingredient);
+    }
   };
 
   const handleRemoveIngredient = (index) => {
+    console.log("Removing ingredient at index:", index);
     const updatedIngredients = ingredients.filter((_, i) => i !== index);
     setIngredients(updatedIngredients);
   };
@@ -316,18 +393,30 @@ const ItemManagement = () => {
                   </Button>
                 </InputGroup>
               ))}
+              <Form.Select
+                className="mb-3"
+                value={selectedIngredientCategory}
+                onChange={handleIngredientCategoryChange}
+              >
+                <option value="">Sélectionner une catégorie d'ingrédient</option>
+                {ingredientsCategories.map((category, index) => (
+                  <option key={index} value={category.category}>
+                    {category.category}
+                  </option>
+                ))}
+              </Form.Select>
               <DropdownButton
                 className="mb-3"
-                title="Ajouter un ingrédient"
+                title="Sélectionner un ingrédient"
                 onSelect={(ingredient) => handleAddIngredient(ingredient)}
               >
-                {ingredientsCategories.map((category, index) => (
+                {availableIngredients.map((ingredient, index) => (
                   <Dropdown.Item
                     key={index}
-                    eventKey={category.Name}
-                    onClick={() => handleAddIngredient(category)}
+                    eventKey={ingredient.Name}
+                    onClick={() => handleAddIngredient(ingredient)}
                   >
-                    {category.Name}
+                    {ingredient.Name} - {ingredient.Price} €
                   </Dropdown.Item>
                 ))}
               </DropdownButton>

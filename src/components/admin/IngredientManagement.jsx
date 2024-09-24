@@ -1,189 +1,222 @@
 import React, { useState, useEffect } from 'react';
-import { Button, Table, Modal, Form } from 'react-bootstrap';
+import { Button, Table, Modal, Form, Spinner, Alert } from 'react-bootstrap';
 import axios from 'axios';
 
 const IngredientManagement = () => {
   const [ingredients, setIngredients] = useState([]);
   const [showModal, setShowModal] = useState(false);
-  const [currentIngredient, setCurrentIngredient] = useState(null);
-  const [ingredientName, setIngredientName] = useState('');
+  const [currentIngredientCategory, setCurrentIngredientCategory] = useState('');
   const [items, setItems] = useState([]);
   const [itemName, setItemName] = useState('');
   const [itemPrice, setItemPrice] = useState('');
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     fetchIngredients();
   }, []);
 
-  // Fetch all ingredients
   const fetchIngredients = async () => {
     try {
+      setLoading(true);
       const response = await axios.get(`${process.env.REACT_APP_API_URL}/Ingredients`);
-      console.log('Fetched ingredients:', response.data);
+      console.log('API response:', response.data); // Log the full API response for debugging
 
-      // Parse the ingredient data if it is in string format
-      const parsedIngredients = response.data.map(ingredient => {
-        const key = Object.keys(ingredient)[0]; // Get the ingredient name (e.g., 'dsdsdsd', 'Sauce')
-        const items = ingredient[key].map(item => {
-          if (typeof item === 'string') {
-            return JSON.parse(item); // Parse the stringified object
-          }
-          return item; // Return the item as is if it's already an object
+      // Ensure response.data exists and is an array
+      if (response.data && Array.isArray(response.data)) {
+        const parsedIngredients = response.data.map(ingredient => {
+          const key = Object.keys(ingredient)[0];
+          
+          // Ensure the ingredient[key] exists and is an array
+          const items = Array.isArray(ingredient[key])
+            ? ingredient[key].map(item => {
+                // Parse if the item is stringified JSON
+                if (typeof item === 'string') {
+                  try {
+                    return JSON.parse(item);
+                  } catch (parseError) {
+                    console.error('Error parsing item:', parseError);
+                    return item; // Return original item if parsing fails
+                  }
+                }
+                return item;
+              })
+            : []; // If ingredient[key] isn't an array, return an empty array
+
+          return { [key]: items };
         });
-        return { [key]: items }; // Return the parsed ingredients
-      });
 
-      setIngredients(parsedIngredients);
+        setIngredients(parsedIngredients);
+      } else {
+        console.error('Unexpected response format:', response.data);
+        setError('Failed to fetch ingredients. Unexpected response format.');
+      }
+
     } catch (error) {
       console.error('Error fetching ingredients:', error);
       setError('Failed to fetch ingredients.');
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Show modal to add or update ingredient
   const handleShowModal = (ingredient = null) => {
     if (ingredient) {
-      const name = Object.keys(ingredient)[0];
-      setCurrentIngredient(name);
-      setIngredientName(name);
-      setItems(ingredient[name]);
+      const category = Object.keys(ingredient)[0];
+      setCurrentIngredientCategory(category);
+      setItems(ingredient[category]);
     } else {
-      setCurrentIngredient(null);
-      setIngredientName('');
+      setCurrentIngredientCategory('');
       setItems([]);
     }
     setShowModal(true);
   };
 
-  // Save or update ingredient
-  const handleSaveIngredient = async () => {
-    try {
-      const ingredientData = { [ingredientName]: items };
+  const handleAddItem = async () => {
+    if (itemName && itemPrice) {
+      try {
+        const newItem = {
+          type_of_Ingredient: currentIngredientCategory,
+          Name: itemName,
+          Price: parseFloat(itemPrice),
+        };
 
-      if (currentIngredient) {
-        console.log('Updating ingredient:', currentIngredient);
-        console.log('PUT URL:', `${process.env.REACT_APP_API_URL}/Ingredients/UpdateIngredient/${currentIngredient}`);
-        console.log('Request body:', ingredientData);
-
-        // Update existing ingredient
-        await axios.put(
-          `${process.env.REACT_APP_API_URL}/Ingredients/UpdateIngredient/${currentIngredient}`,
-          ingredientData
-        );
-      } else {
-        console.log('Creating new ingredient');
-        console.log('Request body:', ingredientData);
-
-        // Create new ingredient
-        await axios.post(`${process.env.REACT_APP_API_URL}/Ingredients/CreateIngredient`, ingredientData);
+        await axios.post(`${process.env.REACT_APP_API_URL}/Ingredients/AddanIngredientToALiSt`, newItem);
+        console.log('Item added:', newItem);
+        setItems([...items, newItem]);
+        setItemName('');
+        setItemPrice('');
+        fetchIngredients();
+      } catch (error) {
+        console.error('Error adding item:', error.response ? error.response.data : error.message);
       }
+    } else {
+      alert('Please provide both an item name and price.');
+    }
+  };
 
-      setShowModal(false);
+  // Remove an entire category
+  const handleRemoveCategory = async (category) => {
+    if (window.confirm(`Are you sure you want to delete the entire category: ${category}?`)) {
+      try {
+        const data = {
+          [category]: [] // Send empty array for the category you want to remove
+        };
+
+        await axios.delete(`${process.env.REACT_APP_API_URL}/Ingredients/RemoveACategory`, {
+          data
+        });
+
+        console.log('Category removed:', category);
+        fetchIngredients(); // Refresh the ingredients list
+      } catch (error) {
+        console.error('Error removing category:', error.response ? error.response.data : error.message);
+      }
+    }
+  };
+
+  const handleRemoveItem = async (index, item) => {
+    try {
+      const itemToRemove = {
+        type_of_Ingredient: currentIngredientCategory,
+        Name: item.Name,
+      };
+
+      await axios.post(`${process.env.REACT_APP_API_URL}/Ingredients/removeASpecifiedIngredientFromTheList`, itemToRemove);
+      console.log('Item removed:', itemToRemove);
+
+      const updatedItems = items.filter((_, i) => i !== index);
+      setItems(updatedItems);
       fetchIngredients();
     } catch (error) {
-      console.error('Error saving ingredient:', error);
+      console.error('Error removing item:', error.response ? error.response.data : error.message);
     }
-  };
-
-  // Delete an ingredient
-  const handleDeleteIngredient = async (ingredientName) => {
-    try {
-      if (window.confirm('Are you sure you want to delete this ingredient?')) {
-        await axios.delete(`${process.env.REACT_APP_API_URL}/Ingredients/DeleteIngredient/${ingredientName}`);
-        fetchIngredients(); // Refresh the list
-      }
-    } catch (error) {
-      console.error('Error deleting ingredient:', error);
-    }
-  };
-
-  // Add a new item to the ingredient
-  const handleAddItem = () => {
-    if (itemName && itemPrice) {
-      const newItem = { Name: itemName, Price: parseFloat(itemPrice) };
-      setItems([...items, newItem]);
-      setItemName('');
-      setItemPrice('');
-    }
-  };
-
-  // Remove an item from the ingredient
-  const handleRemoveItem = (index) => {
-    const updatedItems = items.filter((_, i) => i !== index);
-    setItems(updatedItems);
   };
 
   return (
     <div className="container mx-auto p-6">
-      <h1 className="mb-4">Ingredient Management</h1>
+      <h1 className="mb-4 text-center">Ingredient Management</h1>
 
-      <Button variant="primary" onClick={() => handleShowModal()} className="mb-3">
-        Add New Ingredient
-      </Button>
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <Button variant="primary" onClick={() => handleShowModal()}>
+          Add New Ingredient Category
+        </Button>
+        {error && <Alert variant="danger">{error}</Alert>}
+      </div>
 
-      {error && <p className="text-danger">{error}</p>}
-
-      <Table striped bordered hover responsive>
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Ingredient Name</th>
-            <th>Items</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {ingredients.length > 0 ? (
-            ingredients.map((ingredient, index) => (
-              <tr key={index}>
-                <td>{index + 1}</td>
-                <td>
-                  <strong>{Object.keys(ingredient)[0]}</strong>
-                </td>
-                <td>
-                  <ul>
-                    {ingredient[Object.keys(ingredient)[0]].map((item, i) => (
-                      <li key={i}>
-                        <strong>{item.Name}</strong> - {item.Price ? parseFloat(item.Price).toFixed(2) : 'N/A'} €
-                      </li>
-                    ))}
-                  </ul>
-                </td>
-                <td>
-                  <Button variant="warning" onClick={() => handleShowModal(ingredient)} className="me-2">
-                    Update
-                  </Button>
-                  <Button variant="danger" onClick={() => handleDeleteIngredient(Object.keys(ingredient)[0])}>
-                    Delete
-                  </Button>
+      {loading ? (
+        <div className="text-center">
+          <Spinner animation="border" role="status">
+            <span className="visually-hidden">Loading...</span>
+          </Spinner>
+        </div>
+      ) : (
+        <Table striped bordered hover responsive>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Ingredient Category</th>
+              <th>Items</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {Array.isArray(ingredients) && ingredients.length > 0 ? (
+              ingredients.map((ingredient, index) => (
+                <tr key={index}>
+                  <td>{index + 1}</td>
+                  <td>
+                    <strong>{Object.keys(ingredient)[0]}</strong>
+                  </td>
+                  <td>
+                    <ul>
+                      {Array.isArray(ingredient[Object.keys(ingredient)[0]]) &&
+                        ingredient[Object.keys(ingredient)[0]].map((item, i) => (
+                          <li key={i}>
+                            <strong>{item.Name}</strong> - {item.Price !== undefined && item.Price !== null ? `${parseFloat(item.Price).toFixed(2)} €` : 'N/A'}
+                          </li>
+                        ))}
+                    </ul>
+                  </td>
+                  <td>
+                    <Button variant="warning" onClick={() => handleShowModal(ingredient)} className="me-2">
+                      Update
+                    </Button>
+                    <Button
+                      variant="danger"
+                      onClick={() => handleRemoveCategory(Object.keys(ingredient)[0])}
+                    >
+                      Remove Category
+                    </Button>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr>
+                <td colSpan="4" className="text-center">
+                  No ingredients found.
                 </td>
               </tr>
-            ))
-          ) : (
-            <tr>
-              <td colSpan="4" className="text-center">
-                No ingredients found.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </Table>
+            )}
+          </tbody>
+        </Table>
+      )}
 
       {/* Modal for Add/Update Ingredient */}
       <Modal show={showModal} onHide={() => setShowModal(false)}>
         <Modal.Header closeButton>
-          <Modal.Title>{currentIngredient ? 'Update Ingredient' : 'Add New Ingredient'}</Modal.Title>
+          <Modal.Title>{currentIngredientCategory ? 'Update Ingredient' : 'Add New Ingredient'}</Modal.Title>
         </Modal.Header>
         <Modal.Body>
           <Form>
-            <Form.Group className="mb-3" controlId="formIngredientName">
-              <Form.Label>Ingredient Name</Form.Label>
+            <Form.Group className="mb-3" controlId="formIngredientCategory">
+              <Form.Label>Ingredient Category</Form.Label>
               <Form.Control
                 type="text"
-                placeholder="Enter ingredient name"
-                value={ingredientName}
-                onChange={(e) => setIngredientName(e.target.value)}
+                placeholder="Enter ingredient category"
+                value={currentIngredientCategory}
+                onChange={(e) => setCurrentIngredientCategory(e.target.value)}
+                disabled={currentIngredientCategory !== ''}
               />
             </Form.Group>
 
@@ -193,9 +226,9 @@ const IngredientManagement = () => {
                 {items.map((item, index) => (
                   <div key={index} className="d-flex align-items-center mb-2">
                     <span className="me-2">
-                      {item.Name} - {item.Price} €
+                      {item.Name} - {item.Price !== undefined && item.Price !== null ? `${parseFloat(item.Price).toFixed(2)} €` : 'N/A'}
                     </span>
-                    <Button variant="danger" onClick={() => handleRemoveItem(index)}>
+                    <Button variant="danger" size="sm" onClick={() => handleRemoveItem(index, item)}>
                       Remove
                     </Button>
                   </div>
@@ -218,7 +251,7 @@ const IngredientManagement = () => {
                   className="me-2"
                 />
                 <Button variant="primary" onClick={handleAddItem}>
-                  Add Item
+                  Save Changes
                 </Button>
               </Form.Group>
             </Form.Group>
@@ -227,9 +260,6 @@ const IngredientManagement = () => {
         <Modal.Footer>
           <Button variant="secondary" onClick={() => setShowModal(false)}>
             Close
-          </Button>
-          <Button variant="primary" onClick={handleSaveIngredient}>
-            Save
           </Button>
         </Modal.Footer>
       </Modal>

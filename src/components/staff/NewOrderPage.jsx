@@ -1,49 +1,77 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import PageHeader from '../common/PageHeader';
-
-const categoriesData = [
-    'Entrées', 'Plats Principaux', 'Desserts', 'Boissons', 
-    'Pizzas', 'Pâtes', 'Salades', 'Grillades', 'Sandwiches', 'Soupes', 'Végétarien'
-];
-
-const ingredientOptions = [
-    { name: 'Tomatoes', price: 0, removable: true },
-    { name: 'Olives', price: 1, removable: true },
-    { name: 'Mushrooms', price: 0, removable: true },
-    { name: 'Cheese', price: 2, removable: true },
-    { name: 'Bacon', price: 2, removable: true },
-    { name: 'Lettuce', price: 0, removable: true }
-];
-
-const itemsData = {
-    Entrées: [
-        { id: 1, name: 'Salade', price: 5 },
-        { id: 2, name: 'Soupe', price: 4 },
-        { id: 3, name: 'Bruschetta', price: 6 },
-    ],
-    // More categories and items here
-};
+import axios from 'axios';
+import PageHeader from '../common/PageHeader'; // Assume this is a custom component
 
 const NewOrderPage = () => {
-    const [selectedCategory, setSelectedCategory] = useState(categoriesData[0]);
-    const [cart, setCart] = useState([]);
-    const [selectedItem, setSelectedItem] = useState(null); // Item being modified
-    const [itemQuantity, setItemQuantity] = useState(1); // Quantity of item
-    const [selectedIngredients, setSelectedIngredients] = useState([]); // Ingredients selected
-    const [isItemEditing, setIsItemEditing] = useState(false); // Control which section to show
+    const [categories, setCategories] = useState([]); // Categories fetched from API
+    const [items, setItems] = useState([]); // Items for the selected category
+    const [selectedCategory, setSelectedCategory] = useState(null); // Selected category
+    const [cart, setCart] = useState([]); // Cart for storing selected items
+    const [selectedItem, setSelectedItem] = useState(null); // Item being edited
+    const [itemQuantity, setItemQuantity] = useState(1); // Quantity of the selected item
+    const [ingredients, setIngredients] = useState([]); // Ingredients fetched from API
+    const [selectedIngredients, setSelectedIngredients] = useState([]); // Selected ingredients for customization
+    const [selectedAddOns, setSelectedAddOns] = useState([]); // Selected Add-Ons for customization
+    const [isItemEditing, setIsItemEditing] = useState(false); // Control whether we're editing an item
     const navigate = useNavigate();
-    const categoriesRef = useRef(null);
+    const categoriesRef = useRef(null); // Reference for the category scrolling
     const isDragging = useRef(false);
     const startX = useRef(0);
     const scrollLeft = useRef(0);
 
-    // Handle item selection
+    // Fetch categories when component mounts
+    useEffect(() => {
+        const fetchCategories = async () => {
+            try {
+                const response = await axios.get(`${process.env.REACT_APP_API_URL}/Category/GetAllCategories`);
+                setCategories(response.data); // Store fetched categories
+                setSelectedCategory(response.data[0]?.Name); // Automatically select the first category
+            } catch (error) {
+                console.error('Error fetching categories:', error);
+            }
+        };
+
+        fetchCategories();
+    }, []);
+
+    // Fetch items based on selected category
+    useEffect(() => {
+        if (selectedCategory) {
+            const fetchItems = async () => {
+                try {
+                    const response = await axios.get(`${process.env.REACT_APP_API_URL}/Item/GetItemsByCategory/${selectedCategory}`);
+                    setItems(response.data);
+                } catch (error) {
+                    console.error('Error fetching items:', error);
+                }
+            };
+
+            fetchItems();
+        }
+    }, [selectedCategory]);
+
+    // Fetch all ingredients from the backend using your controller
+    useEffect(() => {
+        const fetchIngredients = async () => {
+            try {
+                const response = await axios.get(`${process.env.REACT_APP_API_URL}/Ingredients/GetAllIngredients`);
+                setIngredients(response.data); // Store fetched ingredients
+            } catch (error) {
+                console.error('Error fetching ingredients:', error);
+            }
+        };
+
+        fetchIngredients();
+    }, []);
+
+    // Handle adding an item to the cart
     const handleAddToCart = (item) => {
         setSelectedItem(item);
         setItemQuantity(1);
-        setSelectedIngredients([]);
-        setIsItemEditing(true); // Switch to item editing section
+        setSelectedIngredients([]); // Reset selected ingredients
+        setSelectedAddOns([]); // Reset selected add-ons
+        setIsItemEditing(true); // Switch to item editing mode
     };
 
     // Add or remove ingredients
@@ -52,48 +80,59 @@ const NewOrderPage = () => {
     };
 
     const handleRemoveIngredient = (ingredient) => {
-        setSelectedIngredients((prev) => prev.filter((ing) => ing.name !== ingredient.name));
+        setSelectedIngredients((prev) => prev.filter((ing) => ing.Name !== ingredient.Name));
     };
 
-    const handleIncreaseQuantity = () => {
-        setItemQuantity(itemQuantity + 1);
+    // Add or remove Add-Ons
+    const handleAddOn = (addOn) => {
+        setSelectedAddOns((prev) => [...prev, addOn]);
     };
 
-    const handleDecreaseQuantity = () => {
-        if (itemQuantity > 1) {
-            setItemQuantity(itemQuantity - 1);
-        }
+    const handleRemoveAddOn = (addOn) => {
+        setSelectedAddOns((prev) => prev.filter((addon) => addon.Name !== addOn.Name));
     };
 
-    // Submit item to cart
+    // Handle increasing/decreasing item quantity
+    const handleIncreaseQuantity = () => setItemQuantity((prev) => prev + 1);
+    const handleDecreaseQuantity = () => setItemQuantity((prev) => (prev > 1 ? prev - 1 : 1));
+
+    // Handle submitting the item to cart
     const handleSubmitItem = () => {
-        if (!selectedItem) return;
-
         const itemToCart = {
             ...selectedItem,
             quantity: itemQuantity,
-            ingredients: selectedIngredients
+            ingredients: selectedIngredients,
+            addOns: selectedAddOns // Add selected Add-Ons to the cart
         };
 
         setCart([...cart, itemToCart]);
+        resetSelection();
+    };
+
+    // Reset item selection
+    const resetSelection = () => {
         setSelectedItem(null);
         setItemQuantity(1);
         setSelectedIngredients([]);
-        setIsItemEditing(false); // Go back to item selection
+        setSelectedAddOns([]);
+        setIsItemEditing(false); // Return to item selection mode
     };
 
-    // Go back to item selection
-    const handleBackToItems = () => {
-        setIsItemEditing(false); // Show item selection again
+    // Handle submitting the entire order
+    const handleSubmitOrder = async () => {
+        try {
+            const response = await axios.post(`${process.env.REACT_APP_API_URL}/Order/CreateOrder`, {
+                items: cart,
+            });
+            console.log('Order created:', response.data);
+            setCart([]); // Clear the cart after submission
+            navigate('/'); // Redirect after successful order creation
+        } catch (error) {
+            console.error('Error submitting order:', error);
+        }
     };
 
-    const handleSubmitOrder = () => {
-        console.log('Order submitted with items', cart);
-        setCart([]);
-        navigate('/'); // Navigate to home or order confirmation page
-    };
-
-    // Handle drag start for category scrolling
+    // Handle category scrolling
     const handleMouseDown = (e) => {
         isDragging.current = true;
         startX.current = e.pageX - categoriesRef.current.offsetLeft;
@@ -120,7 +159,7 @@ const NewOrderPage = () => {
             </button>
 
             <div className="row">
-                {/* Section 1: Select Item */}
+                {/* Section 1: Select Category and Item */}
                 {!isItemEditing && (
                     <div className="col-md-8">
                         {/* Scrollable Category Bar */}
@@ -136,30 +175,30 @@ const NewOrderPage = () => {
                                 cursor: isDragging.current ? 'grabbing' : 'grab'
                             }}
                         >
-                            {categoriesData.map(category => (
+                            {categories.map((category) => (
                                 <button
-                                    key={category}
-                                    className={`btn ${selectedCategory === category ? 'btn-info' : 'btn-outline-info'} mx-1`}
-                                    onClick={() => setSelectedCategory(category)}
+                                    key={category.Name}
+                                    className={`btn ${selectedCategory === category.Name ? 'btn-info' : 'btn-outline-info'} mx-1`}
+                                    onClick={() => setSelectedCategory(category.Name)}
                                     style={{ padding: '12px 20px', fontSize: '16px', whiteSpace: 'nowrap' }}
                                 >
-                                    {category}
+                                    {category.Name}
                                 </button>
                             ))}
                         </div>
 
                         {/* Items Grid */}
                         <div className="items-grid row">
-                            {itemsData[selectedCategory]?.map(item => (
-                                <div key={item.id} className="col-md-4 mb-4">
+                            {items.map((item) => (
+                                <div key={item.Id} className="col-md-4 mb-4">
                                     <div
                                         className="card h-100 clickable-card shadow-lg border-primary rounded-lg"
                                         onClick={() => handleAddToCart(item)}
                                         style={{ cursor: 'pointer', border: '1px solid #007bff', transition: 'transform 0.3s ease-in-out' }}
                                     >
                                         <div className="card-body text-center">
-                                            <h5 className="card-title">{item.name}</h5>
-                                            <p className="card-text">${item.price}</p>
+                                            <h5 className="card-title">{item.Name}</h5>
+                                            <p className="card-text">{item.PriceDineIn} €</p>
                                         </div>
                                     </div>
                                 </div>
@@ -168,18 +207,18 @@ const NewOrderPage = () => {
                     </div>
                 )}
 
-                {/* Section 2: Edit Item (Ingredients, Quantity) */}
+                {/* Section 2: Edit Item */}
                 {isItemEditing && (
                     <div className="col-md-8">
                         <div className="card p-4 shadow-lg">
-                            <button className="btn btn-secondary mb-3" onClick={handleBackToItems}>
+                            <button className="btn btn-secondary mb-3" onClick={resetSelection}>
                                 Retour
                             </button>
-                            <h4>{selectedItem.name} - ${selectedItem.price}</h4>
+                            <h4>{selectedItem.Name} - {selectedItem.PriceDineIn} €</h4>
                             <h5>Ingrédients</h5>
                             <div className="row">
-                                {ingredientOptions.map(ingredient => (
-                                    <div key={ingredient.name} className="col-md-3">
+                                {ingredients.map((ingredient) => (
+                                    <div key={ingredient.Name} className="col-md-3">
                                         <button
                                             className={`btn ${selectedIngredients.includes(ingredient) ? 'btn-danger' : 'btn-outline-primary'} w-100 mb-2`}
                                             onClick={() =>
@@ -188,7 +227,25 @@ const NewOrderPage = () => {
                                                     : handleAddIngredient(ingredient)
                                             }
                                         >
-                                            {ingredient.name} {ingredient.price > 0 ? `+ $${ingredient.price}` : ''}
+                                            {ingredient.Name} {ingredient.Price > 0 ? `+ ${ingredient.Price} €` : ''}
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <h5 className="mt-4">Ajouter des Add-Ons</h5>
+                            <div className="row">
+                                {ingredients.map((addOn) => (
+                                    <div key={addOn.Name} className="col-md-3">
+                                        <button
+                                            className={`btn ${selectedAddOns.includes(addOn) ? 'btn-danger' : 'btn-outline-success'} w-100 mb-2`}
+                                            onClick={() =>
+                                                selectedAddOns.includes(addOn)
+                                                    ? handleRemoveAddOn(addOn)
+                                                    : handleAddOn(addOn)
+                                            }
+                                        >
+                                            {addOn.Name} + {addOn.Price} €
                                         </button>
                                     </div>
                                 ))}
@@ -212,13 +269,13 @@ const NewOrderPage = () => {
                     <div style={{ maxHeight: '300px', overflowY: 'auto', marginBottom: '10px' }}>
                         {cart.length > 0 ? (
                             <ul className="list-group mb-3">
-                                {cart.map(cartItem => (
-                                    <li key={cartItem.id} className="list-group-item d-flex justify-content-between align-items-center">
-                                        {cartItem.name} (x{cartItem.quantity})
+                                {cart.map((cartItem, index) => (
+                                    <li key={index} className="list-group-item d-flex justify-content-between align-items-center">
+                                        {cartItem.Name} (x{cartItem.quantity})
                                         <div>
                                             <button
                                                 className="btn btn-sm btn-outline-danger me-2"
-                                                onClick={() => setCart(cart.filter(item => item.id !== cartItem.id))}
+                                                onClick={() => setCart(cart.filter((item) => item !== cartItem))}
                                             >
                                                 Retirer
                                             </button>
