@@ -37,11 +37,6 @@ const NewOrderPage = () => {
     const [error, setError] = useState(''); // Error handling for items
     const [selectedAddOn, setSelectedAddOn] = useState(null); // Store selected add-on for dropdown
 
-    const categoriesRef = useRef(null); // For scrolling the categories
-    const isDragging = useRef(false);
-    const startX = useRef(0);
-    const scrollLeft = useRef(0);
-
     // Fetch categories when component mounts
     useEffect(() => {
         const fetchCategories = async () => {
@@ -109,23 +104,14 @@ const NewOrderPage = () => {
         } else {
             setRemovals([...removals, ingredient]); // Add ingredient to removals
         }
-    };
-
-    // Handle dropdown selection for add-ons
-    const handleAddOnSelection = (event, newValue) => {
-        setSelectedAddOn(newValue); // Store selected add-on ingredient
-    };
-
-    // Add selected add-on to the list
-    const handleAddOn = () => {
-        if (selectedAddOn && !addOns.includes(selectedAddOn)) {
-            setAddOns([...addOns, selectedAddOn]); // Add the selected add-on
-            setSelectedAddOn(null); // Clear the selection after adding
-        }
+        console.log('Updated Removals:', removals); // Log removals whenever they are updated
     };
 
     // Handle saving the updated item to the cart
     const handleSaveItem = () => {
+        console.log('Saving Item with Removals:', removals); // Log removals when saving the item
+        console.log('Saving Item with Add-Ons:', addOns); // Log add-ons when saving the item
+
         const updatedItem = {
             ...selectedItem,
             removals,
@@ -133,30 +119,6 @@ const NewOrderPage = () => {
         };
         setCart([...cart, updatedItem]); // Add the modified item to the cart
         setOpenDialog(false); // Close the modal
-    };
-
-    // Handle removing an item from the cart
-    const handleRemoveFromCart = (indexToRemove) => {
-        setCart((prevCart) => prevCart.filter((_, index) => index !== indexToRemove));
-    };
-
-    // Handle category scrolling
-    const handleMouseDown = (e) => {
-        isDragging.current = true;
-        startX.current = e.pageX - categoriesRef.current.offsetLeft;
-        scrollLeft.current = categoriesRef.current.scrollLeft;
-    };
-
-    const handleMouseMove = (e) => {
-        if (!isDragging.current) return;
-        e.preventDefault();
-        const x = e.pageX - categoriesRef.current.offsetLeft;
-        const walk = (x - startX.current) * 2; // Adjust scroll speed
-        categoriesRef.current.scrollLeft = scrollLeft.current - walk;
-    };
-
-    const handleMouseUp = () => {
-        isDragging.current = false;
     };
 
     return (
@@ -173,10 +135,6 @@ const NewOrderPage = () => {
                             Catégories
                         </Typography>
                         <Box
-                            ref={categoriesRef}
-                            onMouseDown={handleMouseDown}
-                            onMouseMove={handleMouseMove}
-                            onMouseUp={handleMouseUp}
                             sx={{ display: 'flex', gap: 2, overflowX: 'auto', cursor: 'grab' }}
                         >
                             {categories.map((category) => (
@@ -201,7 +159,7 @@ const NewOrderPage = () => {
                         ) : (
                             <Grid container spacing={4}>
                                 {items.map((item) => (
-                                    <Grid item xs={12} sm={6} md={4} key={item.Id}>
+                                    <Grid item xs={12} sm={6} md={4} key={item._id}>
                                         <Card
                                             elevation={3}
                                             sx={{ cursor: 'pointer' }}
@@ -209,7 +167,7 @@ const NewOrderPage = () => {
                                         >
                                             <CardContent sx={{ textAlign: 'center' }}>
                                                 <Typography variant="h6">{item.Name}</Typography>
-                                                <Typography>{item.PriceDineIn} €</Typography>
+                                                <Typography>{item.price} €</Typography>
                                             </CardContent>
                                         </Card>
                                     </Grid>
@@ -230,28 +188,40 @@ const NewOrderPage = () => {
                             <Typography color="textSecondary">Votre panier est vide</Typography>
                         ) : (
                             <List>
-                                {cart.map((cartItem, index) => (
-                                    <React.Fragment key={index}>
-                                        <ListItem
-                                            secondaryAction={
-                                                <IconButton
-                                                    edge="end"
-                                                    aria-label="delete"
-                                                    onClick={() => handleRemoveFromCart(index)}
-                                                >
-                                                    <Delete />
-                                                </IconButton>
+                            {cart.map((cartItem, index) => (
+                                <React.Fragment key={index}>
+                                    <ListItem
+                                        secondaryAction={
+                                            <IconButton
+                                                edge="end"
+                                                aria-label="delete"
+                                                onClick={() => setCart(cart.filter((_, idx) => idx !== index))}
+                                            >
+                                                <Delete />
+                                            </IconButton>
+                                        }
+                                    >
+                                        <ListItemText
+                                            primary={`${cartItem.Name} - ${cartItem.price} €`}
+                                            // Ensure that the `removals` and `addOns` are properly rendered as strings
+                                            secondary={
+                                                <>
+                                                    {`Removals: ${cartItem.removals
+                                                        .map(rem => (typeof rem === 'object' && rem?.Name ? rem.Name : 'Unknown'))
+                                                        .join(', ')}`}
+                                                    <br />
+                                                    {`Add-ons: ${cartItem.addOns
+                                                        .map(addOn => (typeof addOn === 'object' && addOn?.Name ? addOn.Name : 'Unknown'))
+                                                        .join(', ')}`}
+                                                </>
                                             }
-                                        >
-                                            <ListItemText
-                                                primary={`${cartItem.Name} - ${cartItem.PriceDineIn} €`}
-                                                secondary={`Removals: ${cartItem.removals.map(rem => rem.Name).join(', ')} | Add-ons: ${cartItem.addOns.map(addOn => addOn.Name).join(', ')}`}
-                                            />
-                                        </ListItem>
-                                        <Divider />
-                                    </React.Fragment>
-                                ))}
-                            </List>
+                                        />
+                                    </ListItem>
+                                    <Divider />
+                                </React.Fragment>
+                            ))}
+                        </List>
+                        
                         )}
 
                         {cart.length > 0 && (
@@ -269,16 +239,16 @@ const NewOrderPage = () => {
                 <DialogContent dividers>
                     <Typography variant="h6">Removals (Ingrédients à supprimer)</Typography>
                     <Box>
-                        {selectedItem?.Ingredients?.map((ingredient) => (
+                        {selectedItem?.Ingredients?.map((ingredient, index) => (
                             <FormControlLabel
-                                key={ingredient}
+                                key={index}
                                 control={
                                     <Checkbox
                                         checked={removals.includes(ingredient)}
                                         onChange={() => handleToggleRemoval(ingredient)}
                                     />
                                 }
-                                label={ingredient}
+                                label={ingredient.Name}
                             />
                         ))}
                     </Box>
@@ -288,12 +258,17 @@ const NewOrderPage = () => {
                     </Typography>
                     <Autocomplete
                         value={selectedAddOn}
-                        onChange={handleAddOnSelection}
+                        onChange={(event, newValue) => setSelectedAddOn(newValue)}
                         options={ingredients}
                         getOptionLabel={(option) => `${option.Name} (+ ${option.Price} €)`}
                         renderInput={(params) => <TextField {...params} label="Ajouter un ingrédient" />}
                     />
-                    <Button variant="outlined" color="primary" onClick={handleAddOn} sx={{ mt: 2 }}>
+                    <Button variant="outlined" color="primary" onClick={() => {
+                        if (selectedAddOn && !addOns.includes(selectedAddOn)) {
+                            setAddOns([...addOns, selectedAddOn]);
+                            setSelectedAddOn(null);
+                        }
+                    }} sx={{ mt: 2 }}>
                         Ajouter Add-on
                     </Button>
                     <List>

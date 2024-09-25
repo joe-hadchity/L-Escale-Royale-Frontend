@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Button, Form, Table } from 'react-bootstrap';
+import { TableContainer, Table, TableBody, TableCell, TableHead, TableRow, Paper, Button, Dialog, DialogActions, DialogContent, DialogTitle, TextField, Typography, Box } from '@mui/material';
 import axios from 'axios';
 
 const CategoryManagement = () => {
@@ -8,196 +8,171 @@ const CategoryManagement = () => {
     const [modalTitle, setModalTitle] = useState('Ajouter une catégorie');
     const [currentCategory, setCurrentCategory] = useState(null);
     const [categoryName, setCategoryName] = useState('');
-    const [categoryDescription, setCategoryDescription] = useState(''); // Added for Description
+    const [categoryDescription, setCategoryDescription] = useState('');
 
-    // Fetch categories on component mount
     useEffect(() => {
         fetchCategories();
     }, []);
 
-    // Fetch all categories from backend
     const fetchCategories = async () => {
         try {
-            console.log('Fetching categories from backend...');
             const response = await axios.get(`${process.env.REACT_APP_API_URL}/Category/GetAllCategories`);
-            console.log('Fetched categories:', response.data);
             setCategories(response.data);
         } catch (error) {
             console.error('Error fetching categories:', error);
         }
     };
 
-    // Handle modal opening for new or existing category
     const handleShowModal = (category = null) => {
         if (category) {
             setModalTitle('Mettre à jour la catégorie');
             setCurrentCategory(category);
-            setCategoryName(category.Name); // Assuming 'Name' is the correct field in the API response
-            setCategoryDescription(category.Description || ''); // Set the Description field
-            console.log('Editing category:', category);
+            setCategoryName(category.Name || '');
+            setCategoryDescription(category.Description || '');
         } else {
             setModalTitle('Ajouter une catégorie');
             setCurrentCategory(null);
             setCategoryName('');
-            setCategoryDescription(''); // Reset description
-            console.log('Adding a new category');
+            setCategoryDescription('');
         }
         setShowModal(true);
     };
 
-    // Handle adding or updating a category
     const handleSaveCategory = async () => {
         if (!categoryName) {
-            alert('Category name is required.');
+            alert('Le nom de la catégorie est obligatoire.');
             return;
         }
 
         try {
             if (currentCategory && currentCategory.Name) {
-                // Update category: Convert the name to lowercase and encode it to ensure it works
                 const updateUrl = `${process.env.REACT_APP_API_URL}/Category/UpdateCategoryByName/${encodeURIComponent(currentCategory.Name)}`;
-                console.log(`Updating category: ${currentCategory.Name}`);
-                console.log(`PUT request URL: ${updateUrl}`);
                 await axios.put(updateUrl, {
                     Name: categoryName,
-                    Description: categoryDescription // Add description in update
+                    Description: categoryDescription
                 });
-                console.log(`Category updated: ${categoryName}`);
             } else {
-                // Add new category
-                console.log(`Adding new category: ${categoryName}`);
                 const createUrl = `${process.env.REACT_APP_API_URL}/Category/CreateCategory`;
-                console.log(`POST request URL: ${createUrl}`);
                 await axios.post(createUrl, {
                     Name: categoryName,
-                    Description: categoryDescription // Add description in create
+                    Description: categoryDescription
                 });
-                console.log(`Category created: ${categoryName}`);
             }
 
             setShowModal(false);
-            fetchCategories(); // Refresh categories list after add/update
+            fetchCategories();
         } catch (error) {
             console.error('Error saving category:', error);
-            alert(`Failed to save category: ${error.response?.data || error.message}`);
+            alert(`Erreur lors de la sauvegarde de la catégorie: ${error.response?.data || error.message}`);
         }
     };
 
-    // Handle deleting a category (using encodeURIComponent and converting to lowercase)
     const handleDeleteCategory = async (name) => {
-        if (!window.confirm(`Are you sure you want to delete the category '${name}'?`)) {
+        if (!window.confirm(`Êtes-vous sûr de vouloir supprimer la catégorie '${name}'?`)) {
             return;
         }
 
         try {
             const deleteUrl = `${process.env.REACT_APP_API_URL}/Category/DeleteCategoryByName/${encodeURIComponent(name)}`;
-            console.log(`Deleting category: ${name}`);
-            console.log(`DELETE request URL: ${deleteUrl}`);
             await axios.delete(deleteUrl);
-            console.log(`Category deleted: ${name}`);
-            fetchCategories(); // Refresh categories list after deletion
+            fetchCategories();
         } catch (error) {
             console.error('Error deleting category:', error);
-            alert(`Failed to delete category: ${error.response?.data || error.message}`);
+            alert(`Erreur lors de la suppression de la catégorie: ${error.response?.data || error.message}`);
         }
     };
 
     return (
-        <div className="container mx-auto p-6">
-            <div className="row mb-4">
-                <div className="col-md-12 d-flex justify-content-between align-items-center">
-                    <h2 className="fw-bold">Gestion des Catégories</h2>
-                    <Button variant="success" onClick={() => handleShowModal()}>
-                        Ajouter une catégorie
-                    </Button>
-                </div>
-            </div>
+        <Box sx={{ padding: 4 }}>
+            <Typography variant="h4" sx={{ fontWeight: 'bold', marginBottom: 2 }}>
+                Gestion des Catégories
+            </Typography>
 
-            <div className="row">
-                <div className="col-md-12">
-                    <Table striped bordered hover className="shadow-sm" responsive>
-                        <thead className="table-dark">
-                            <tr>
-                                <th>#</th>
-                                <th>Nom de la Catégorie</th>
-                                <th>Description</th> {/* Added Description Column */}
-                                <th className="text-center">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {categories.length > 0 ? (
-                                categories.map((category, index) => (
-                                    <tr key={index}>
-                                        <td>{index + 1}</td>
-                                        <td>{category.Name || 'Nom indisponible'}</td> {/* Match field name with your backend */}
-                                        <td>{category.Description || 'Aucune description'}</td> {/* Added Description display */}
-                                        <td className="text-center">
-                                            <Button
-                                                variant="warning"
-                                                className="me-2"
-                                                onClick={() => handleShowModal(category)}
-                                            >
-                                                Modifier
-                                            </Button>
-                                            <Button
-                                                variant="danger"
-                                                onClick={() => handleDeleteCategory(category.Name)}
-                                            >
-                                                Supprimer
-                                            </Button>
-                                        </td>
-                                    </tr>
-                                ))
-                            ) : (
-                                <tr>
-                                    <td colSpan="4" className="text-center">
-                                        Aucune catégorie trouvée
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </Table>
-                </div>
-            </div>
+            {/* Button under title */}
+            <Box sx={{ marginBottom: 4 }}>
+                <Button variant="contained" color="primary" onClick={() => handleShowModal()}>
+                    Ajouter une catégorie
+                </Button>
+            </Box>
+
+            <TableContainer component={Paper}>
+                <Table>
+                    <TableHead>
+                        <TableRow>
+                            <TableCell>#</TableCell>
+                            <TableCell>Nom de la Catégorie</TableCell>
+                            <TableCell>Description</TableCell>
+                            <TableCell align="center">Actions</TableCell>
+                        </TableRow>
+                    </TableHead>
+                    <TableBody>
+                        {categories.length > 0 ? (
+                            categories.map((category, index) => (
+                                <TableRow key={index}>
+                                    <TableCell>{index + 1}</TableCell>
+                                    <TableCell>{category.Name || 'Nom indisponible'}</TableCell>
+                                    <TableCell>{category.Description || 'Aucune description'}</TableCell>
+                                    <TableCell align="center">
+                                        <Button
+                                            variant="outlined"
+                                            color="info"
+                                            sx={{ marginRight: 2 }}
+                                            onClick={() => handleShowModal(category)}
+                                        >
+                                            Modifier
+                                        </Button>
+                                        <Button
+                                            variant="outlined"
+                                            color="error"
+                                            onClick={() => handleDeleteCategory(category.Name)}
+                                        >
+                                            Supprimer
+                                        </Button>
+                                    </TableCell>
+                                </TableRow>
+                            ))
+                        ) : (
+                            <TableRow>
+                                <TableCell colSpan={4} align="center">
+                                    Aucune catégorie trouvée
+                                </TableCell>
+                            </TableRow>
+                        )}
+                    </TableBody>
+                </Table>
+            </TableContainer>
 
             {/* Modal for Add/Update Category */}
-            <Modal show={showModal} onHide={() => setShowModal(false)}>
-                <Modal.Header closeButton>
-                    <Modal.Title>{modalTitle}</Modal.Title>
-                </Modal.Header>
-                <Modal.Body>
-                    <Form>
-                        <Form.Group className="mb-3" controlId="formCategoryName">
-                            <Form.Label>Nom de la Catégorie</Form.Label>
-                            <Form.Control
-                                type="text"
-                                placeholder="Entrer le nom de la catégorie"
-                                value={categoryName}
-                                onChange={(e) => setCategoryName(e.target.value)}
-                            />
-                        </Form.Group>
-
-                        <Form.Group className="mb-3" controlId="formCategoryDescription"> {/* Added Description field */}
-                            <Form.Label>Description de la Catégorie</Form.Label>
-                            <Form.Control
-                                as="textarea"
-                                placeholder="Entrer la description de la catégorie"
-                                value={categoryDescription}
-                                onChange={(e) => setCategoryDescription(e.target.value)}
-                            />
-                        </Form.Group>
-                    </Form>
-                </Modal.Body>
-                <Modal.Footer>
-                    <Button variant="secondary" onClick={() => setShowModal(false)}>
+            <Dialog open={showModal} onClose={() => setShowModal(false)} maxWidth="sm" fullWidth>
+                <DialogTitle>{modalTitle}</DialogTitle>
+                <DialogContent>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        <TextField
+                            label="Nom de la Catégorie"
+                            value={categoryName}
+                            onChange={(e) => setCategoryName(e.target.value)}
+                            fullWidth
+                        />
+                        <TextField
+                            label="Description de la Catégorie"
+                            value={categoryDescription}
+                            onChange={(e) => setCategoryDescription(e.target.value)}
+                            fullWidth
+                            multiline
+                            rows={4}
+                        />
+                    </Box>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setShowModal(false)} color="secondary">
                         Fermer
                     </Button>
-                    <Button variant="primary" onClick={handleSaveCategory}>
+                    <Button onClick={handleSaveCategory} variant="contained" color="primary">
                         Enregistrer
                     </Button>
-                </Modal.Footer>
-            </Modal>
-        </div>
+                </DialogActions>
+            </Dialog>
+        </Box>
     );
 };
 

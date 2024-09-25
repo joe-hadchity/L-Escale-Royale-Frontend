@@ -1,6 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Button, Modal, Form, Table } from 'react-bootstrap';
+import {
+  Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  MenuItem,
+} from '@mui/material';
 
 const SupplierPayments = () => {
   const [payments, setPayments] = useState([]);
@@ -20,24 +35,20 @@ const SupplierPayments = () => {
   const fetchPayments = async () => {
     try {
       const response = await axios.get(`${process.env.REACT_APP_API_URL}/Payment/GetAllPayment`);
-      console.log('Fetched payments:', response.data);
       setPayments(response.data);
     } catch (error) {
-      console.error('Error fetching payments:', error);
-      setError('Failed to fetch payments.');
+      setError('Échec de la récupération des paiements.');
     }
   };
 
   // Show modal for adding or updating payment
   const handleShowModal = (payment = null) => {
     if (payment) {
-      console.log('Editing payment:', payment);
       setCurrentPayment(payment);
       setType(payment.Type);
       setAmount(payment.Amount);
       setReason(payment.Reason);
     } else {
-      console.log('Creating new payment');
       setCurrentPayment(null);
       setType('');
       setAmount('');
@@ -49,156 +60,156 @@ const SupplierPayments = () => {
   // Convert amount to double
   const convertToDouble = (value) => {
     const parsedValue = parseFloat(value);
-    if (isNaN(parsedValue)) {
-      return 0.0;
-    }
-    return parsedValue;
+    return isNaN(parsedValue) ? 0.0 : parsedValue;
   };
 
   // Save payment (add or update)
   const handleSavePayment = async () => {
     const paymentData = {
       Type: type,
-      Amount: convertToDouble(amount), // Convert to double
+      Amount: convertToDouble(amount),
       Reason: reason,
     };
 
-    console.log('Request body:', paymentData);
-
     try {
       if (currentPayment) {
-        console.log('Updating payment with ID:', currentPayment.PaymentNumber);
-        await axios.put(`${process.env.REACT_APP_API_URL}/Payment/UpdatePaymentByPaymentNumber/${currentPayment.PaymentNumber}`, paymentData);
+        await axios.put(
+          `${process.env.REACT_APP_API_URL}/Payment/UpdatePaymentByPaymentNumber/${currentPayment.PaymentNumber}`,
+          paymentData
+        );
       } else {
-        console.log('Creating new payment');
         await axios.post(`${process.env.REACT_APP_API_URL}/Payment/CreatePayment`, paymentData);
       }
       setShowModal(false);
       fetchPayments();
     } catch (error) {
-      console.error('Error saving payment:', error);
-      console.log('Error response data:', error.response?.data);
-      console.log('Error status:', error.response?.status);
-      console.log('Error headers:', error.response?.headers);
-      alert('Error saving payment. Please check the console for more details.');
+      alert('Erreur lors de l\'enregistrement du paiement.');
     }
   };
 
   // Delete payment
   const handleDeletePayment = async (paymentNumber) => {
-    if (!window.confirm('Are you sure you want to delete this payment?')) return;
+    if (!window.confirm('Voulez-vous vraiment supprimer ce paiement ?')) return;
 
     try {
-      console.log('Deleting payment with ID:', paymentNumber);
       await axios.delete(`${process.env.REACT_APP_API_URL}/Payment/DeletePaymentBYPaymentNumber/${paymentNumber}`);
       fetchPayments();
     } catch (error) {
-      console.error('Error deleting payment:', error);
-      alert('Error deleting payment. Please check the console for more details.');
+      alert('Erreur lors de la suppression du paiement.');
     }
   };
 
   return (
-    <div className="container mx-auto p-6">
-      <h1 className="mb-4">Payment Management</h1>
+    <div style={{ padding: '20px' }}>
+      <h1>Gestion des paiements</h1>
 
-      <Button variant="primary" onClick={() => handleShowModal()} className="mb-3">
-        Add New Payment
+      <Button
+        variant="contained" // Changed to contained for a solid button
+        color="primary"
+        onClick={() => handleShowModal()}
+        style={{ marginBottom: '20px' }}
+      >
+        Ajouter un nouveau paiement
       </Button>
 
-      {error && <p className="text-danger">{error}</p>}
+      {error && <p style={{ color: 'red' }}>{error}</p>}
 
-      <Table striped bordered hover responsive>
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Type</th>
-            <th>Amount</th>
-            <th>Reason</th>
-            <th>Date</th>
-            <th>Gross Number</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {payments.length > 0 ? (
-            payments.map((payment, index) => (
-              <tr key={payment.PaymentNumber || index}>
-                <td>{index + 1}</td>
-                <td>{payment.Type}</td>
-                <td>{payment.Amount}</td>
-                <td>{payment.Reason}</td>
-                <td>{payment.DateOfPayment}</td>
-                <td>{payment.GrossNumber}</td>
-                <td>
-                  {/* <Button variant="warning" onClick={() => handleShowModal(payment)} className="me-2">
-                    Update
-                  </Button> */}
-                  <Button variant="danger" onClick={() => handleDeletePayment(payment.PaymentNumber)}>
-                    Delete
-                  </Button>
-                </td>
-              </tr>
-            ))
-          ) : (
-            <tr>
-              <td colSpan="7" className="text-center">
-                No payments found.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </Table>
+      <TableContainer component={Paper}>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>#</TableCell>
+              <TableCell>Type</TableCell>
+              <TableCell>Montant</TableCell>
+              <TableCell>Raison</TableCell>
+              <TableCell>Date</TableCell>
+              <TableCell>Numéro brut</TableCell>
+              <TableCell>Actions</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {payments.length > 0 ? (
+              payments.map((payment, index) => (
+                <TableRow key={payment.PaymentNumber || index}>
+                  <TableCell>{index + 1}</TableCell>
+                  <TableCell>{payment.Type}</TableCell>
+                  <TableCell>{payment.Amount}</TableCell>
+                  <TableCell>{payment.Reason}</TableCell>
+                  <TableCell>{payment.DateOfPayment}</TableCell>
+                  <TableCell>{payment.GrossNumber}</TableCell>
+                  <TableCell>
+                    {/* Update Button */}
+                    <Button
+                      variant="outlined"
+                      color="info"
+                      onClick={() => handleShowModal(payment)}
+                      style={{ marginRight: '10px' }}
+                    >
+                      Mettre à jour
+                    </Button>
+                    {/* Delete Button */}
+                    <Button
+                      variant="outlined"
+                      color="error"
+                      onClick={() => handleDeletePayment(payment.PaymentNumber)}
+                    >
+                      Supprimer
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={7} align="center">
+                  Aucun paiement trouvé.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
 
       {/* Modal for Add/Update Payment */}
-      <Modal show={showModal} onHide={() => setShowModal(false)}>
-        <Modal.Header closeButton>
-          <Modal.Title>{currentPayment ? 'Update Payment' : 'Add Payment'}</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <Form>
-            <Form.Group controlId="formPaymentType">
-              <Form.Label>Type</Form.Label>
-              <Form.Control
-                as="select"
-                value={type}
-                onChange={(e) => setType(e.target.value)}
-              >
-                <option value="">Select a type</option>
-                <option value="Income">Income</option>
-                <option value="Expense">Expense</option>
-              </Form.Control>
-            </Form.Group>
-            <Form.Group controlId="formPaymentAmount" className="mt-3">
-              <Form.Label>Amount</Form.Label>
-              <Form.Control
-                type="number"
-                step="0.01"
-                placeholder="Enter amount"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-              />
-            </Form.Group>
-            <Form.Group controlId="formPaymentReason" className="mt-3">
-              <Form.Label>Reason</Form.Label>
-              <Form.Control
-                type="text"
-                placeholder="Enter reason"
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-              />
-            </Form.Group>
-          </Form>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={() => setShowModal(false)}>
-            Close
+      <Dialog open={showModal} onClose={() => setShowModal(false)}>
+        <DialogTitle>{currentPayment ? 'Mettre à jour le paiement' : 'Ajouter un paiement'}</DialogTitle>
+        <DialogContent>
+          <TextField
+            label="Type"
+            select
+            value={type}
+            onChange={(e) => setType(e.target.value)}
+            fullWidth
+            margin="normal"
+          >
+            <MenuItem value="">Sélectionnez un type</MenuItem>
+            <MenuItem value="Income">Revenu</MenuItem>
+            <MenuItem value="Expense">Dépense</MenuItem>
+          </TextField>
+          <TextField
+            label="Montant"
+            type="number"
+            fullWidth
+            margin="normal"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+          />
+          <TextField
+            label="Raison"
+            fullWidth
+            margin="normal"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setShowModal(false)} color="secondary" variant="outlined">
+            Fermer
           </Button>
-          <Button variant="primary" onClick={handleSavePayment}>
-            {currentPayment ? 'Update' : 'Add'}
+          <Button onClick={handleSavePayment} variant="contained" color="primary">
+            {currentPayment ? 'Mettre à jour' : 'Ajouter'}
           </Button>
-        </Modal.Footer>
-      </Modal>
+        </DialogActions>
+      </Dialog>
     </div>
   );
 };
