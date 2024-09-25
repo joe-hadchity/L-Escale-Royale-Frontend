@@ -3,7 +3,6 @@ import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-d
 import AdminPage from './pages/AdminPage';
 import Login from './pages/Login';
 import StaffPage from './pages/StaffPage';
-import NewOrderPage from './components/staff/NewOrderPage'; // Import this
 import { AuthProvider, AuthContext } from './context/AuthContext';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -44,17 +43,6 @@ function App() {
                             </ProtectedRoute>
                         } 
                     />
-
-                    {/* New order creation route */}
-                    <Route 
-                        path="/staff/new-order" 
-                        element={
-                            <ProtectedRoute allowedRoles={['staff']}>
-                                <NewOrderPage />
-                            </ProtectedRoute>
-                        } 
-                    />
-
                     {/* Login route */}
                     <Route path="/login" element={<Login />} />
 

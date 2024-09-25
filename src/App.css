@@ -57,6 +57,17 @@
   padding: 2rem;
   background-color: #f8f9fa;
 }
+/* General layout adjustments */
+.staff-page {
+  display: flex;
+  min-height: 100vh;
+}
+
+.staff-content {
+  flex-grow: 1;
+  padding: 2rem;
+  background-color: #f8f9fa;
+}
 
 h1, h2 {
   font-size: 2rem;
@@ -121,3 +132,4 @@ h1, h2 {
 .btn-group .btn {
   transition: background-color 0.3s ease-in-out;
 }
+
