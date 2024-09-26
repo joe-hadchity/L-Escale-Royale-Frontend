@@ -1,7 +1,9 @@
+// src/components/sidebar/Sidebar.jsx
+
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Drawer, List, ListItem, ListItemIcon, IconButton, Tooltip } from '@mui/material';
-import { Dashboard, RestaurantMenu } from '@mui/icons-material';
+import { Dashboard, RestaurantMenu, AttachMoney } from '@mui/icons-material';
 import logo from '../../assets/l-escale-royale-logo.png'; // Correct logo path
 
 const Sidebar = () => {
@@ -86,6 +88,26 @@ const Sidebar = () => {
                     >
                         <ListItemIcon sx={{ justifyContent: 'center' }}>
                             <Dashboard sx={{ color: activeItem === '/staff/dashboard' ? '#fff' : '#000' }} />
+                        </ListItemIcon>
+                    </ListItem>
+                </Tooltip>
+
+                {/* Gross Management Icon */}
+                <Tooltip title="Gestion du Gross" placement="right">
+                    <ListItem
+                        button
+                        onClick={() => handleItemClick('/staff/gross')}
+                        selected={activeItem === '/staff/gross'}
+                        sx={{
+                            justifyContent: 'center',
+                            '&.Mui-selected': {
+                                backgroundColor: '#00ef34',
+                                color: '#ef4ff3',
+                            },
+                        }}
+                    >
+                        <ListItemIcon sx={{ justifyContent: 'center' }}>
+                            <AttachMoney sx={{ color: activeItem === '/staff/gross' ? '#fff' : '#000' }} />
                         </ListItemIcon>
                     </ListItem>
                 </Tooltip>

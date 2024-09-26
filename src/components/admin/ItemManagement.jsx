@@ -19,6 +19,7 @@ import {
   TableRow,
   Paper,
   Typography,
+  Chip,
 } from "@mui/material";
 import axios from "axios";
 
@@ -65,24 +66,25 @@ const ItemManagement = () => {
 
   const parseIngredients = (data) => {
     return data.map((categoryObj, index) => {
-        if (categoryObj && categoryObj.categoryName && typeof categoryObj.categoryName === "string") {
-            const categoryName = categoryObj.categoryName;
-            const ingredientsArray = categoryObj.ingredients || [];
+      // Find the first key in the object that is not '_id'
+      const categoryName = Object.keys(categoryObj).find((key) => key !== '_id');
+      // Extract the array of ingredients for the identified category
+      const ingredientsArray = categoryObj[categoryName] || [];
 
-            return {
-                categoryName: categoryName,  // Use 'categoryName' instead of 'category'
-                ingredients: Array.isArray(ingredientsArray) ? ingredientsArray : []
-            };
-        } else {
-            console.warn(`Invalid data structure at index ${index}:`, categoryObj);
-            return {
-                categoryName: "Unknown",
-                ingredients: [],
-            };
-        }
+      if (categoryName && Array.isArray(ingredientsArray)) {
+        return {
+          categoryName: categoryName, // Use the dynamic category name
+          ingredients: ingredientsArray,
+        };
+      } else {
+        console.warn(`Invalid data structure at index ${index}:`, categoryObj);
+        return {
+          categoryName: "Unknown",
+          ingredients: [],
+        };
+      }
     });
-};
-
+  };
 
   const fetchItemsByCategory = async (category) => {
     try {
@@ -180,7 +182,7 @@ const ItemManagement = () => {
   };
 
   const handleAddIngredient = (ingredient) => {
-    if (!ingredients.includes(ingredient)) {
+    if (!ingredients.some(ing => ing.Name === ingredient.Name)) {
       setIngredients([...ingredients, ingredient]);
     }
   };
@@ -261,15 +263,48 @@ const ItemManagement = () => {
         <DialogTitle>{modalTitle}</DialogTitle>
         <DialogContent>
           <FormControl fullWidth sx={{ marginBottom: 2 }}>
-            <InputLabel>Catégorie</InputLabel>
-            <Select value={selectedCategory} disabled>
-              {categories.map((category, index) => (
-                <MenuItem key={index} value={category.Name}>
-                  {category.Name}
+            <InputLabel>Catégorie d'ingrédient</InputLabel>
+            <Select value={selectedIngredientCategory} onChange={handleIngredientCategoryChange}>
+              <MenuItem value="">
+                <em>Sélectionner une catégorie d'ingrédient</em>
+              </MenuItem>
+              {ingredientsCategories.map((category, index) => (
+                <MenuItem key={index} value={category.categoryName}>
+                  {category.categoryName}
                 </MenuItem>
               ))}
             </Select>
           </FormControl>
+
+          <FormControl fullWidth sx={{ marginBottom: 2 }}>
+            <InputLabel>Ingrédients</InputLabel>
+            <Select
+              multiple
+              value={ingredients}
+              onChange={(e) => setIngredients(e.target.value)}
+              renderValue={(selected) => selected.map((ing) => ing.Name).join(", ")}
+            >
+              {availableIngredients.map((ingredient, index) => (
+                <MenuItem key={index} value={ingredient}>
+                  {ingredient.Name} - {ingredient.Price} €
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          {ingredients.length > 0 && (
+            <Box sx={{ marginTop: 2 }}>
+              <Typography variant="h6">Ingrédients Sélectionnés:</Typography>
+              {ingredients.map((ingredient, index) => (
+                <Chip
+                  key={index}
+                  label={`${ingredient.Name} - ${ingredient.Price} €`}
+                  onDelete={() => handleRemoveIngredient(index)}
+                  sx={{ marginRight: 1, marginBottom: 1 }}
+                />
+              ))}
+            </Box>
+          )}
 
           <TextField
             fullWidth
@@ -304,34 +339,6 @@ const ItemManagement = () => {
             value={pricedel}
             onChange={(e) => setPriceDelivery(e.target.value)}
           />
-
-<FormControl fullWidth sx={{ marginBottom: 2 }}>
-  <InputLabel>Catégorie d'ingrédient</InputLabel>
-  <Select value={selectedIngredientCategory} onChange={handleIngredientCategoryChange}>
-    <MenuItem value="">
-      <em>Sélectionner une catégorie d'ingrédient</em>
-    </MenuItem>
-    {ingredientsCategories.map((category, index) => (
-      <MenuItem key={index} value={category.categoryName}>
-        {category.categoryName}
-      </MenuItem>
-    ))}
-  </Select>
-</FormControl>
-
-
-          {ingredients.map((ingredient, index) => (
-            <Box sx={{ display: "flex", justifyContent: "space-between", marginBottom: 2 }} key={index}>
-              <TextField fullWidth label="Nom de l'ingrédient" value={ingredient.Name || ""} disabled />
-              <Button variant="outlined" color="error" onClick={() => handleRemoveIngredient(index)}>
-                Supprimer
-              </Button>
-            </Box>
-          ))}
-
-          <Button variant="outlined" color="primary" onClick={() => handleAddIngredient(availableIngredients[0])}>
-            Ajouter Ingrédient
-          </Button>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setShowModal(false)} color="secondary">
