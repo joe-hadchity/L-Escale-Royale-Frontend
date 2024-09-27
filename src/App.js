@@ -4,6 +4,7 @@ import AdminPage from './pages/AdminPage';
 import Login from './pages/Login';
 import StaffPage from './pages/StaffPage';
 import { AuthProvider, AuthContext } from './context/AuthContext';
+import { OrderProvider } from './context/OrderContext'; // Import OrderProvider
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
     const { user } = useContext(AuthContext);
@@ -23,32 +24,34 @@ function App() {
     return (
         <Router>
             <AuthProvider>
-                <Routes>
-                    {/* Admin routes */}
-                    <Route 
-                        path="/admin/*" 
-                        element={
-                            <ProtectedRoute allowedRoles={['admin']}>
-                                <AdminPage />
-                            </ProtectedRoute>
-                        } 
-                    />
+                <OrderProvider>
+                    <Routes>
+                        {/* Admin routes */}
+                        <Route 
+                            path="/admin/*" 
+                            element={
+                                <ProtectedRoute allowedRoles={['admin']}>
+                                    <AdminPage />
+                                </ProtectedRoute>
+                            } 
+                        />
 
-                    {/* Staff routes */}
-                    <Route 
-                        path="/staff/*" 
-                        element={
-                            <ProtectedRoute allowedRoles={['staff']}>
-                                <StaffPage />
-                            </ProtectedRoute>
-                        } 
-                    />
-                    {/* Login route */}
-                    <Route path="/login" element={<Login />} />
+                        {/* Staff routes */}
+                        <Route 
+                            path="/staff/*" 
+                            element={
+                                <ProtectedRoute allowedRoles={['staff']}>
+                                    <StaffPage />
+                                </ProtectedRoute>
+                            } 
+                        />
+                        {/* Login route */}
+                        <Route path="/login" element={<Login />} />
 
-                    {/* Default route */}
-                    <Route path="*" element={<Navigate to="/login" />} />
-                </Routes>
+                        {/* Default route */}
+                        <Route path="*" element={<Navigate to="/login" />} />
+                    </Routes>
+                </OrderProvider>
             </AuthProvider>
         </Router>
     );

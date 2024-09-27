@@ -18,13 +18,9 @@ import {
     ListItem,
     IconButton,
     ListItemText,
-    Divider,
-    FormControl,
-    InputLabel,
-    MenuItem,
-    Select,
-    Badge,
+    Divider
 } from '@mui/material';
+import { Money, CreditCard, MobileFriendly, Replay } from '@mui/icons-material';
 import { Delete, AddCircle, RemoveCircle } from '@mui/icons-material';
 import axios from 'axios';
 
@@ -39,12 +35,17 @@ const NewOrderPage = () => {
     const [removals, setRemovals] = useState([]);
     const [addOns, setAddOns] = useState([]);
     const [openDialog, setOpenDialog] = useState(false);
+    const [openPaymentDialog, setOpenPaymentDialog] = useState(false);
     const [error, setError] = useState('');
     const [selectedIngredientCategory, setSelectedIngredientCategory] = useState('');
     const [activeTab, setActiveTab] = useState('remove');
-    const [orderType, setOrderType] = useState('Dine In'); // Order type (Dine In/Takeaway)
+    const [orderType, setOrderType] = useState('Dine In');
+    const [tableNumber, setTableNumber] = useState('');
+    const [orderNumber, setOrderNumber] = useState(1001);
+    const [paymentMethod, setPaymentMethod] = useState('');
 
-    // Fetch categories on mount
+    const tableNumbers = Array.from({ length: 20 }, (_, i) => i + 1);
+
     useEffect(() => {
         const fetchCategories = async () => {
             try {
@@ -55,11 +56,9 @@ const NewOrderPage = () => {
                 console.error('Erreur lors de la récupération des catégories:', error);
             }
         };
-
         fetchCategories();
     }, []);
 
-    // Fetch items based on selected category
     useEffect(() => {
         if (selectedCategory) {
             const fetchItems = async () => {
@@ -72,12 +71,10 @@ const NewOrderPage = () => {
                     setError('Erreur lors de la récupération des articles');
                 }
             };
-
             fetchItems();
         }
     }, [selectedCategory]);
 
-    // Fetch all ingredients for categories
     useEffect(() => {
         const fetchIngredients = async () => {
             try {
@@ -88,222 +85,292 @@ const NewOrderPage = () => {
                 console.error('Erreur lors de la récupération des ingrédients:', error);
             }
         };
-
         fetchIngredients();
     }, []);
 
-    // Parse ingredients into flattened array
     const parseIngredients = (data) => {
-        return data.map((categoryObj, index) => {
+        return data.map((categoryObj) => {
             const categoryName = Object.keys(categoryObj).find((key) => key !== '_id');
             return {
                 categoryName: categoryName,
-                ingredients: categoryObj[categoryName] || []
+                ingredients: categoryObj[categoryName] || [],
             };
         });
     };
 
-    // Handle item click
     const handleItemClick = (item) => {
-        setSelectedItem({ ...item, quantity: 1 }); // Default quantity set to 1
+        setSelectedItem({ ...item, quantity: 1 });
         setRemovals([]);
         setAddOns([]);
         setOpenDialog(true);
     };
 
-    // Handle saving the updated item to the cart
+    const areItemsEqual = (item1, item2) => {
+        return (
+            item1._id === item2._id &&
+            JSON.stringify(item1.removals) === JSON.stringify(item2.removals) &&
+            JSON.stringify(item1.addOns) === JSON.stringify(item2.addOns)
+        );
+    };
+
     const handleSaveItem = () => {
         const updatedItem = {
             ...selectedItem,
             removals,
             addOns,
         };
-        setCart([...cart, updatedItem]);
+        const existingItemIndex = cart.findIndex(cartItem => areItemsEqual(cartItem, updatedItem));
+
+        if (existingItemIndex > -1) {
+            const updatedCart = [...cart];
+            updatedCart[existingItemIndex].quantity += 1;
+            setCart(updatedCart);
+        } else {
+            setCart([...cart, updatedItem]);
+        }
+
         setOpenDialog(false);
     };
 
-    // Handle ingredient category change
     const handleIngredientCategoryChange = (category) => {
         setSelectedIngredientCategory(category);
         const selectedCategory = ingredientsCategories.find((cat) => cat.categoryName === category);
         setAvailableIngredients(selectedCategory ? selectedCategory.ingredients : []);
     };
 
-    // Handle order type change (Dine In/Takeaway)
-    const handleOrderTypeChange = (event) => {
-        setOrderType(event.target.value);
+    const handleOrderTypeChange = (event, newType) => {
+        setOrderType(newType);
     };
 
-    // Handle quantity change
+    const handleTableNumberSelect = (num) => {
+        setTableNumber(num);
+    };
+
     const handleQuantityChange = (item, type) => {
-        setCart(cart.map(cartItem => 
+        setCart(cart.map(cartItem =>
             cartItem._id === item._id
                 ? { ...cartItem, quantity: type === 'increase' ? cartItem.quantity + 1 : cartItem.quantity - 1 }
                 : cartItem
         ));
     };
 
-    // Toggle for removing ingredients
     const toggleRemoveIngredient = (ingredient) => {
         setRemovals((prev) =>
             prev.includes(ingredient) ? prev.filter((rem) => rem !== ingredient) : [...prev, ingredient]
         );
     };
 
-    // Toggle for adding ingredients
     const toggleAddIngredient = (ingredient) => {
         setAddOns((prev) =>
             prev.includes(ingredient) ? prev.filter((add) => add !== ingredient) : [...prev, ingredient]
         );
     };
 
-    // Calculate item price based on order type
     const calculateItemPrice = (item) => {
         return orderType === 'Dine In' ? item.price : item.pricedel;
     };
 
+    const handleValidateOrder = () => {
+        if (orderType === 'Dine In') {
+            // If the order is Dine In, submit the order directly without payment
+            submitOrder();
+        } else {
+            // If the order is for Takeaway, open the payment dialog
+            setOpenPaymentDialog(true);
+        }
+    };
+
+    const submitOrder = () => {
+        // Handle the logic for submitting the order
+        console.log('Order submitted:', cart, orderType, tableNumber);
+        // Here you would send the order to the backend or handle it accordingly
+        // Clear cart or navigate to a different page as needed
+        setCart([]);
+        // Optionally reset table number and payment method
+        setTableNumber('');
+        setPaymentMethod('');
+    };
+
+    const handlePaymentMethodChange = (method) => {
+        setPaymentMethod(method);
+        // Submit the order after selecting a payment method
+        submitOrder();
+        setOpenPaymentDialog(false);
+    };
+
     return (
-        <Container maxWidth="lg" sx={{ py: 4 }}>
-            <Typography variant="h4" sx={{ mb: 4, textAlign: 'center', fontWeight: 'bold' }}>
-                Nouvelle Commande
-            </Typography>
-
-            {/* Order Type Selection */}
-            <FormControl fullWidth sx={{ mb: 3 }}>
-                <InputLabel>Type de commande</InputLabel>
-                <Select value={orderType} onChange={handleOrderTypeChange}>
-                    <MenuItem value="Dine In">Sur place</MenuItem>
-                    <MenuItem value="Takeaway">À emporter</MenuItem>
-                </Select>
-            </FormControl>
-
-            <Grid container spacing={4}>
-                {/* Left section: Categories and Items */}
-                <Grid item xs={12} md={8}>
-                    <Box sx={{ mb: 4 }}>
-                        <Typography variant="h5" sx={{ mb: 3, fontWeight: 'bold' }}>
-                            Catégories
-                        </Typography>
-                        <Box sx={{ display: 'flex', gap: 2, overflow: 'auto', cursor: 'grab', whiteSpace: 'nowrap' }}>
-                            {categories.map((category) => (
-                                <Button
-                                    key={category.Name}
-                                    variant={selectedCategory === category.Name ? 'contained' : 'outlined'}
-                                    onClick={() => setSelectedCategory(category.Name)}
-                                    sx={{ padding: '16px', minWidth: '140px', fontSize: '16px', fontWeight: '600', borderRadius: '10px' }}
-                                >
-                                    {category.Name}
-                                </Button>
-                            ))}
-                        </Box>
-                    </Box>
-
-                    {/* Items Section */}
-                    <Box>
-                        <Typography variant="h5" sx={{ mb: 3, fontWeight: 'bold' }}>
-                            Sélectionner un Article
-                        </Typography>
-                        {error ? (
-                            <Typography variant="body1" color="error">{error}</Typography>
-                        ) : (
-                            <Grid container spacing={3}>
-                                {items.map((item) => (
-                                    <Grid item xs={12} sm={6} md={4} key={item._id}>
-                                        <Card
-                                            elevation={3}
-                                            sx={{ cursor: 'pointer', padding: '20px', borderRadius: '15px' }}
-                                            onClick={() => handleItemClick(item)}
-                                        >
-                                            <CardContent sx={{ textAlign: 'center' }}>
-                                                <Typography variant="h6" sx={{ fontWeight: '600' }}>{item.Name}</Typography>
-                                            </CardContent>
-                                        </Card>
-                                    </Grid>
-                                ))}
-                            </Grid>
-                        )}
+        <Container maxWidth="xl" sx={{ padding: 0, margin: 0 }}>
+            <Grid container spacing={1} sx={{ height: '100vh', overflow: 'hidden' }}>
+                {/* Categories Section */}
+                <Grid item xs={2} sx={{ backgroundColor: '#f0f0f0', padding: 1, boxShadow: 3, borderRight: '1px solid #e0e0e0' }}>
+                    <Typography variant="h6" sx={{ mb: 1, fontWeight: 'bold', textAlign: 'center' }}>
+                        Catégories
+                    </Typography>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, overflowY: 'auto', height: '90vh' }}>
+                        {categories.map((category) => (
+                            <Button
+                                key={category.Name}
+                                variant={selectedCategory === category.Name ? 'contained' : 'outlined'}
+                                onClick={() => setSelectedCategory(category.Name)}
+                                fullWidth
+                                sx={{
+                                    padding: '10px',
+                                    fontSize: '14px',
+                                    fontWeight: '500',
+                                    borderRadius: '8px',
+                                }}
+                            >
+                                {category.Name}
+                            </Button>
+                        ))}
                     </Box>
                 </Grid>
 
-                {/* Right section: Cart */}
-                <Grid item xs={12} md={4}>
-                    <Box sx={{ p: 3, border: '1px solid #e0e0e0', borderRadius: '15px', backgroundColor: '#f9f9f9' }}>
-                        <Typography variant="h5" sx={{ mb: 2, fontWeight: 'bold' }}>
-                            Panier
-                        </Typography>
-
-                        {cart.length === 0 ? (
-                            <Typography color="textSecondary">Votre panier est vide</Typography>
-                        ) : (
-                            // Make the cart items scrollable
-                            <Box sx={{ maxHeight: '300px', overflowY: 'auto' }}>
-                                <List>
-                                    {cart.map((cartItem, index) => (
-                                        <React.Fragment key={index}>
-                                            <ListItem
-                                                secondaryAction={
-                                                    <IconButton
-                                                        edge="end"
-                                                        aria-label="delete"
-                                                        onClick={() => setCart(cart.filter((_, idx) => idx !== index))}
-                                                    >
-                                                        <Delete />
-                                                    </IconButton>
-                                                }
-                                                sx={{ alignItems: 'flex-start', marginBottom: 2 }}
-                                            >
-                                                <ListItemText
-                                                    primary={
-                                                        <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-                                                            {cartItem.Name} - {calculateItemPrice(cartItem)} € x {cartItem.quantity}
-                                                        </Typography>
-                                                    }
-                                                    secondary={
-                                                        <>
-                                                            {cartItem.removals.length > 0 && (
-                                                                <Typography variant="body2" color="textSecondary">
-                                                                    <strong>Retirés:</strong> {cartItem.removals.map(rem => rem.Name).join(', ')}
-                                                                </Typography>
-                                                            )}
-                                                            {cartItem.addOns.length > 0 && (
-                                                                <Typography variant="body2" color="textSecondary">
-                                                                    <strong>Ajouts:</strong> {cartItem.addOns.map(addOn => addOn.Name).join(', ')}
-                                                                </Typography>
-                                                            )}
-                                                            {/* Quantity Controls */}
-                                                            <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-                                                                <IconButton
-                                                                    aria-label="decrease"
-                                                                    onClick={() => handleQuantityChange(cartItem, 'decrease')}
-                                                                    disabled={cartItem.quantity <= 1}
-                                                                >
-                                                                    <RemoveCircle />
-                                                                </IconButton>
-                                                                <Typography variant="body1" sx={{ mx: 1 }}>{cartItem.quantity}</Typography>
-                                                                <IconButton
-                                                                    aria-label="increase"
-                                                                    onClick={() => handleQuantityChange(cartItem, 'increase')}
-                                                                >
-                                                                    <AddCircle />
-                                                                </IconButton>
-                                                            </Box>
-                                                        </>
-                                                    }
-                                                />
-                                            </ListItem>
-                                            <Divider />
-                                        </React.Fragment>
-                                    ))}
-                                </List>
-                            </Box>
-                        )}
-
-                        {cart.length > 0 && (
-                            <Button variant="contained" color="primary" fullWidth sx={{ padding: '16px', mt: 3, fontWeight: 'bold' }}>
-                                VALIDER LA COMMANDE
-                            </Button>
-                        )}
+                {/* Items Section */}
+                <Grid item xs={6} sx={{ padding: 1 }}>
+                    <Typography variant="h6" sx={{ mb: 1, textAlign: 'center', fontWeight: 'bold' }}>
+                        Nouvelle Commande - N°{orderNumber}
+                    </Typography>
+                    {/* Order Type Selection */}
+                    <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1, mb: 1 }}>
+                        <ToggleButtonGroup
+                            value={orderType}
+                            exclusive
+                            onChange={handleOrderTypeChange}
+                        >
+                            <ToggleButton value="Dine In" sx={{ fontWeight: 'bold' }}>
+                                Sur Place
+                            </ToggleButton>
+                            <ToggleButton value="Takeaway" sx={{ fontWeight: 'bold' }}>
+                                À Emporter
+                            </ToggleButton>
+                        </ToggleButtonGroup>
                     </Box>
+
+                    {/* Table Number Selection */}
+                    {orderType === 'Dine In' && (
+                        <Box sx={{ display: 'flex', gap: 1, overflowX: 'auto', mb: 2, padding: '4px', justifyContent: 'center' }}>
+                            {tableNumbers.map((num) => (
+                                <Button
+                                    key={num}
+                                    variant={tableNumber === num ? 'contained' : 'outlined'}
+                                    onClick={() => handleTableNumberSelect(num)}
+                                    sx={{ minWidth: '50px', fontSize: '12px', padding: '6px' }}
+                                >
+                                    {num}
+                                </Button>
+                            ))}
+                        </Box>
+                    )}
+
+                    <Typography variant="h6" sx={{ mb: 1, fontWeight: 'bold' }}>
+                        Sélectionner un Article
+                    </Typography>
+                    {error ? (
+                        <Typography variant="body1" color="error" textAlign="center">{error}</Typography>
+                    ) : (
+                        <Grid container spacing={1} sx={{ maxHeight: '70vh', overflowY: 'auto', paddingRight: '8px' }}>
+                            {items.map((item) => (
+                                <Grid item xs={3} key={item._id}>
+                                    <Card
+                                        elevation={3}
+                                        sx={{ cursor: 'pointer', padding: '8px', borderRadius: '8px' }}
+                                        onClick={() => handleItemClick(item)}
+                                    >
+                                        <CardContent sx={{ textAlign: 'center', padding: '6px' }}>
+                                            <Typography variant="subtitle2" sx={{ fontWeight: '600' }}>
+                                                {item.Name}
+                                            </Typography>
+                                            <Typography variant="caption" color="textSecondary">
+                                                {calculateItemPrice(item)} CFA
+                                            </Typography>
+                                        </CardContent>
+                                    </Card>
+                                </Grid>
+                            ))}
+                        </Grid>
+                    )}
+                </Grid>
+
+                {/* Cart Section */}
+                <Grid item xs={4} sx={{ backgroundColor: '#f0f0f0', padding: 1, boxShadow: 3, borderLeft: '1px solid #e0e0e0' }}>
+                    <Typography variant="h6" sx={{ mb: 1, fontWeight: 'bold', textAlign: 'center' }}>
+                        Panier
+                    </Typography>
+                    {cart.length === 0 ? (
+                        <Typography color="textSecondary" textAlign="center">
+                            Votre panier est vide
+                        </Typography>
+                    ) : (
+                        <Box sx={{ maxHeight: '75vh', overflowY: 'auto', padding: '8px' }}>
+                            <List dense>
+                                {cart.map((cartItem, index) => (
+                                    <React.Fragment key={index}>
+                                        <ListItem
+                                            secondaryAction={
+                                                <IconButton
+                                                    edge="end"
+                                                    aria-label="delete"
+                                                    onClick={() => setCart(cart.filter((_, idx) => idx !== index))}
+                                                >
+                                                    <Delete />
+                                                </IconButton>
+                                            }
+                                            sx={{ alignItems: 'flex-start', marginBottom: 1, borderBottom: '1px solid #e0e0e0' }}
+                                        >
+                                            <Box sx={{ flex: 1 }}>
+                                                <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
+                                                    {cartItem.Name}
+                                                </Typography>
+                                                <Typography variant="body2">
+                                                    {calculateItemPrice(cartItem)} CFA x {cartItem.quantity}
+                                                </Typography>
+                                                {cartItem.removals.length > 0 && (
+                                                    <Typography variant="body2" color="textSecondary">
+                                                        <strong>Retirés:</strong> {cartItem.removals.map(rem => rem.Name).join(', ')}
+                                                    </Typography>
+                                                )}
+                                                {cartItem.addOns.length > 0 && (
+                                                    <Typography variant="body2" color="textSecondary">
+                                                        <strong>Ajouts:</strong> {cartItem.addOns.map(addOn => addOn.Name).join(', ')}
+                                                    </Typography>
+                                                )}
+                                            </Box>
+                                            {/* Quantity Controls */}
+                                            <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+                                                <IconButton
+                                                    aria-label="decrease"
+                                                    onClick={() => handleQuantityChange(cartItem, 'decrease')}
+                                                    disabled={cartItem.quantity <= 1}
+                                                >
+                                                    <RemoveCircle />
+                                                </IconButton>
+                                                <Typography variant="body1" sx={{ mx: 1 }}>{cartItem.quantity}</Typography>
+                                                <IconButton
+                                                    aria-label="increase"
+                                                    onClick={() => handleQuantityChange(cartItem, 'increase')}
+                                                >
+                                                    <AddCircle />
+                                                </IconButton>
+                                            </Box>
+                                        </ListItem>
+                                        <Divider />
+                                    </React.Fragment>
+                                ))}
+                            </List>
+                        </Box>
+                    )}
+                    {cart.length > 0 && (
+                        <Button
+                            variant="contained"
+                            color="primary"
+                            fullWidth
+                            sx={{ padding: '10px', mt: 2, fontWeight: 'bold' }}
+                            onClick={handleValidateOrder}
+                        >
+                            VALIDER LA COMMANDE
+                        </Button>
+                    )}
                 </Grid>
             </Grid>
 
@@ -362,7 +429,7 @@ const NewOrderPage = () => {
                                         {availableIngredients.map((ingredient, index) => (
                                             <Chip
                                                 key={index}
-                                                label={`${ingredient.Name} - ${ingredient.Price} €`}
+                                                label={`${ingredient.Name} - ${ingredient.Price} CFA`}
                                                 color={addOns.includes(ingredient) ? 'primary' : 'default'}
                                                 onClick={() => toggleAddIngredient(ingredient)}
                                                 sx={{ fontWeight: 'bold', cursor: 'pointer' }}
@@ -380,6 +447,73 @@ const NewOrderPage = () => {
                     </Button>
                     <Button onClick={handleSaveItem} variant="contained" color="primary" sx={{ fontWeight: 'bold' }}>
                         Sauvegarder
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Payment Selection Modal */}
+            <Dialog open={openPaymentDialog} onClose={() => setOpenPaymentDialog(false)} maxWidth="sm">
+                <DialogTitle sx={{ fontWeight: 'bold', textAlign: 'center' }}>
+                    Sélectionner le Mode de Paiement
+                </DialogTitle>
+                <DialogContent dividers>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, padding: 2 }}>
+                        <Button
+                            variant="contained"
+                            color="primary"
+                            sx={{ padding: '20px', fontSize: '18px', fontWeight: 'bold', display: 'flex', justifyContent: 'flex-start', alignItems: 'center' }}
+                            onClick={() => handlePaymentMethodChange('Cash')}
+                            startIcon={<Money sx={{ fontSize: 30, marginRight: '10px' }} />}
+                        >
+                            Cash
+                        </Button>
+
+                        <Button
+                            variant="contained"
+                            color="secondary"
+                            sx={{ padding: '20px', fontSize: '18px', fontWeight: 'bold', display: 'flex', justifyContent: 'flex-start', alignItems: 'center' }}
+                            onClick={() => handlePaymentMethodChange('Card')}
+                            startIcon={<CreditCard sx={{ fontSize: 30, marginRight: '10px' }} />}
+                        >
+                            Carte
+                        </Button>
+
+                        <Button
+                            variant="contained"
+                            color="success"
+                            sx={{ padding: '20px', fontSize: '18px', fontWeight: 'bold', display: 'flex', justifyContent: 'flex-start', alignItems: 'center' }}
+                            onClick={() => handlePaymentMethodChange('Airtel')}
+                            startIcon={<MobileFriendly sx={{ fontSize: 30, marginRight: '10px' }} />}
+                        >
+                            Airtel
+                        </Button>
+
+                        <Button
+                            variant="contained"
+                            color="warning"
+                            sx={{ padding: '20px', fontSize: '18px', fontWeight: 'bold', display: 'flex', justifyContent: 'flex-start', alignItems: 'center' }}
+                            onClick={() => handlePaymentMethodChange('Retour')}
+                            startIcon={<Replay sx={{ fontSize: 30, marginRight: '10px' }} />}
+                        >
+                            Retour
+                        </Button>
+                    </Box>
+                </DialogContent>
+                <DialogActions>
+                    <Button
+                        onClick={() => setOpenPaymentDialog(false)}
+                        color="secondary"
+                        sx={{ fontWeight: 'bold', padding: '12px 20px', minWidth: '120px' }}
+                    >
+                        Annuler
+                    </Button>
+                    <Button
+                        variant="contained"
+                        color="primary"
+                        sx={{ fontWeight: 'bold', padding: '12px 20px', minWidth: '120px' }}
+                        onClick={() => handlePaymentMethodChange(paymentMethod)}
+                    >
+                        Confirmer le Paiement
                     </Button>
                 </DialogActions>
             </Dialog>
