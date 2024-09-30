@@ -263,8 +263,8 @@ const Order = () => {
     return (
         <Container maxWidth={false} sx={{ padding: 0, margin: 0, display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
             <Grid container spacing={1} sx={{ height: '100vh', overflow: 'hidden' }}>
-                {/* Categories Section */}
-                <Grid item xs={2} sx={{ backgroundColor: '#f0f0f0', padding: 1, boxShadow: 3, borderRight: '1px solid #e0e0e0' }}>
+                {/* Slimmer Categories Section */}
+                <Grid item xs={1.5} sx={{ backgroundColor: '#f0f0f0', padding: 1, boxShadow: 3, borderRight: '1px solid #e0e0e0' }}>
                     <Typography variant="h6" sx={{ mb: 1, fontWeight: 'bold', textAlign: 'center' }}>
                         Categories
                     </Typography>
@@ -282,12 +282,10 @@ const Order = () => {
                         ))}
                     </Box>
                 </Grid>
-
-                {/* Items Section */}
-                <Grid item xs={6} sx={{ padding: 1 }}>
-                    <Typography variant="h6" sx={{ mb: 1, textAlign: 'center', fontWeight: 'bold' }}>
-                        New Order - N°{orderNumber}
-                    </Typography>
+    
+                {/* Items Section with 5 Columns */}
+                <Grid item xs={6.5} sx={{ padding: 1 }}>
+                   
                     <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1, mb: 1 }}>
                         <ToggleButtonGroup value={orderType} exclusive onChange={handleOrderTypeChange}>
                             <ToggleButton value="Dine In" sx={{ fontWeight: 'bold' }}>
@@ -298,7 +296,8 @@ const Order = () => {
                             </ToggleButton>
                         </ToggleButtonGroup>
                     </Box>
-
+    
+                    {/* Table Number Selection */}
                     {orderType === 'Dine In' && (
                         <Box sx={{ display: 'flex', gap: 1, overflowX: 'auto', mb: 2, padding: '4px', justifyContent: 'center' }}>
                             {tableNumbers.map((num) => (
@@ -306,14 +305,14 @@ const Order = () => {
                                     key={`table-${num}`}
                                     variant={tableNumber === num ? 'contained' : 'outlined'}
                                     onClick={() => handleTableNumberSelect(num)}
-                                    sx={{ minWidth: '50px', fontSize: '12px', padding: '6px' }}
+                                    sx={{ minWidth: '40px', fontSize: '12px', padding: '6px 8px' }}
                                 >
                                     {num}
                                 </Button>
                             ))}
                         </Box>
                     )}
-
+    
                     <Typography variant="h6" sx={{ mb: 1, fontWeight: 'bold' }}>
                         Select an Item
                     </Typography>
@@ -324,7 +323,7 @@ const Order = () => {
                     ) : (
                         <Grid container spacing={1} sx={{ maxHeight: '70vh', overflowY: 'auto', paddingRight: '8px' }}>
                             {items.map((item) => (
-                                <Grid item xs={3} key={item._id}>
+                                <Grid item xs={2.4} key={item._id}>
                                     <Card
                                         elevation={3}
                                         sx={{ cursor: 'pointer', padding: '8px', borderRadius: '8px' }}
@@ -344,18 +343,31 @@ const Order = () => {
                         </Grid>
                     )}
                 </Grid>
-
+    
                 {/* Cart Section */}
-                <Grid item xs={4} sx={{ backgroundColor: '#f0f0f0', padding: 1, boxShadow: 3, borderLeft: '1px solid #e0e0e0' }}>
+                <Grid item xs={4} sx={{ backgroundColor: '#f0f0f0', padding: 2, boxShadow: 3, borderLeft: '1px solid #e0e0e0' }}>
                     <Typography variant="h6" sx={{ mb: 1, fontWeight: 'bold', textAlign: 'center' }}>
                         Cart
                     </Typography>
+                    
+                    {/* Order Information */}
+                    <Box sx={{ marginBottom: 2 }}>
+                        <Typography variant="body1" sx={{ fontWeight: 'bold', textAlign: 'center', fontSize: '1rem', mb: 1 }}>
+                            Order N°{orderNumber}
+                        </Typography>
+                        {orderType === 'Dine In' && (
+                            <Typography variant="body1" sx={{ fontWeight: 'bold', textAlign: 'center', fontSize: '1rem' }}>
+                                Table: {tableNumber}
+                            </Typography>
+                        )}
+                    </Box>
+    
                     {cart.length === 0 ? (
                         <Typography color="textSecondary" textAlign="center">
                             Your cart is empty
                         </Typography>
                     ) : (
-                        <Box sx={{ maxHeight: '75vh', overflowY: 'auto', padding: '8px' }}>
+                        <Box sx={{ maxHeight: '65vh', overflowY: 'auto', padding: '8px' }}>
                             <List dense>
                                 {cart.map((cartItem, index) => (
                                     <React.Fragment key={`cart-${cartItem._id}-${index}`}>
@@ -374,17 +386,22 @@ const Order = () => {
                                                 <Typography variant="body2">
                                                     {orderType === 'Dine In' ? cartItem.price : cartItem.pricedel} CFA x {cartItem.quantity}
                                                 </Typography>
+                                                
+                                                {/* Display Removals */}
                                                 {cartItem.removals && cartItem.removals.length > 0 && (
                                                     <Typography variant="body2" color="error">
                                                         Removals: {cartItem.removals.map(rem => rem.Name).join(', ')}
                                                     </Typography>
                                                 )}
+    
+                                                {/* Display Add-ons */}
                                                 {cartItem.addOns && cartItem.addOns.length > 0 && (
                                                     <Typography variant="body2" color="primary">
                                                         Add-ons: {cartItem.addOns.map(add => add.Name).join(', ')}
                                                     </Typography>
                                                 )}
                                             </Box>
+    
                                             {/* Quantity Controls */}
                                             <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
                                                 <IconButton
@@ -413,7 +430,7 @@ const Order = () => {
                             variant="contained"
                             color="primary"
                             fullWidth
-                            sx={{ padding: '10px', mt: 2, fontWeight: 'bold' }}
+                            sx={{ padding: '15px', mt: 3, fontWeight: 'bold', position: 'sticky', bottom: 0 }}
                             onClick={handleValidateOrder}
                         >
                             Place Order
@@ -421,7 +438,7 @@ const Order = () => {
                     )}
                 </Grid>
             </Grid>
-
+    
             {/* Item Editing Modal */}
             <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="md">
                 <DialogTitle>Edit {selectedItem?.Name}</DialogTitle>
@@ -439,7 +456,7 @@ const Order = () => {
                             Add
                         </ToggleButton>
                     </ToggleButtonGroup>
-
+    
                     {activeTab === 'remove' && (
                         <Box>
                             <Typography variant="h6" sx={{ mt: 2, fontWeight: 'bold' }}>
@@ -458,7 +475,7 @@ const Order = () => {
                             </Box>
                         </Box>
                     )}
-
+    
                     {activeTab === 'add' && (
                         <Box>
                             <Typography variant="h6" sx={{ mt: 2, fontWeight: 'bold' }}>
@@ -499,7 +516,7 @@ const Order = () => {
                     </Button>
                 </DialogActions>
             </Dialog>
-
+    
             {/* Payment Selection Modal */}
             <Dialog open={openPaymentDialog} onClose={() => setOpenPaymentDialog(false)} maxWidth="sm">
                 <DialogTitle sx={{ fontWeight: 'bold', textAlign: 'center' }}>Select Payment Method</DialogTitle>
@@ -514,7 +531,7 @@ const Order = () => {
                         >
                             Cash
                         </Button>
-
+    
                         <Button
                             variant="contained"
                             color="secondary"
@@ -524,7 +541,7 @@ const Order = () => {
                         >
                             Card
                         </Button>
-
+    
                         <Button
                             variant="contained"
                             color="success"
@@ -534,7 +551,7 @@ const Order = () => {
                         >
                             Airtel
                         </Button>
-
+    
                         <Button
                             variant="contained"
                             color="warning"
@@ -554,6 +571,7 @@ const Order = () => {
             </Dialog>
         </Container>
     );
+    
 };
 
 export default Order;
