@@ -1,24 +1,16 @@
-// src/components/sidebar/Sidebar.jsx
-
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Drawer, List, ListItem, ListItemIcon, IconButton, Tooltip } from '@mui/material';
-import { Dashboard, RestaurantMenu, AttachMoney } from '@mui/icons-material';
-import logo from '../../assets/l-escale-royale-logo.png'; // Correct logo path
+import { Drawer, List, ListItem, ListItemIcon, Tooltip, Divider } from '@mui/material';
+import { Dashboard, RestaurantMenu, AttachMoney, Home } from '@mui/icons-material';
 
 const Sidebar = () => {
-    const navigate = useNavigate(); // Initialize navigation
-    const location = useLocation(); // Get the current route
-    const activeItem = location.pathname; // Track the active item
-
-    // Handle logo click to redirect to homeStaff
-    const handleLogoClick = () => {
-        navigate('/staff/');
-    };
+    const navigate = useNavigate();
+    const location = useLocation();
+    const activeItem = location.pathname;
 
     // Handle item click and set active item
     const handleItemClick = (path) => {
-        navigate(path); // Navigate to the clicked path
+        navigate(path);
     };
 
     return (
@@ -26,88 +18,110 @@ const Sidebar = () => {
             variant="permanent"
             anchor="left"
             sx={{
-                width: '80px', // Slim width for the sidebar
+                width: '80px',
                 flexShrink: 0,
                 '& .MuiDrawer-paper': {
-                    width: '80px', // Slim width for the drawer paper
+                    width: '80px',
                     boxSizing: 'border-box',
-                    background: 'linear-gradient(145deg, #ffffff, #f0f0f0)', // Subtle gradient background
+                    background: 'linear-gradient(145deg, #e0e0e0, #cfcfcf)',
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
                 },
             }}
         >
-            {/* Sidebar Content */}
-            <List sx={{ p: 2 }}>
-                {/* Logo */}
-                <ListItem sx={{ justifyContent: 'center', mb: 2 }}>
-                    <IconButton onClick={handleLogoClick}>
-                        <img
-                            src={logo}
-                            alt="L'Escale Royale Logo"
-                            style={{
-                                maxWidth: '40px',
-                                cursor: 'pointer',
-                                borderRadius: '0%', // Keep it square or customize as needed
-                            }}
-                        />
-                    </IconButton>
-                </ListItem>
+            {/* Centered Sidebar Content */}
+            <List sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', p: 0 }}>
+                
+                {/* Home Icon */}
+                <Tooltip title="Home" placement="right">
+                    <ListItem
+                        button // Use this to treat ListItem as a button
+                        onClick={() => handleItemClick('/staff/')}
+                        selected={activeItem === '/staff/'}
+                        sx={{
+                            justifyContent: 'center',
+                            width: '100%',
+                            '&.Mui-selected': {
+                                backgroundColor: '#0056b3',
+                                color: '#ffffff',
+                            },
+                        }}
+                    >
+                        <ListItemIcon sx={{ justifyContent: 'center', color: activeItem === '/staff/' ? '#ffffff' : '#3f51b5' }}>
+                            <Home />
+                        </ListItemIcon>
+                    </ListItem>
+                </Tooltip>
+
+                {/* Divider for separation */}
+                <Divider sx={{ width: '70%', my: 2 }} />
 
                 {/* Order Icon */}
                 <Tooltip title="Order" placement="right">
                     <ListItem
-                        button
+                        button // Use this to treat ListItem as a button
                         onClick={() => handleItemClick('/staff/order')}
                         selected={activeItem === '/staff/order'}
                         sx={{
                             justifyContent: 'center',
+                            width: '100%',
                             '&.Mui-selected': {
-                                backgroundColor: '#007bff',
-                                color: '#fff',
+                                backgroundColor: '#0056b3',
+                                color: '#ffffff',
                             },
                         }}
                     >
-                        <ListItemIcon sx={{ justifyContent: 'center' }}>
-                            <RestaurantMenu sx={{ color: activeItem === '/staff/order' ? '#fff' : '#000' }} />
+                        <ListItemIcon sx={{ justifyContent: 'center', color: activeItem === '/staff/order' ? '#ffffff' : '#3f51b5' }}>
+                            <RestaurantMenu />
                         </ListItemIcon>
                     </ListItem>
                 </Tooltip>
+
+                {/* Divider for separation */}
+                <Divider sx={{ width: '70%', my: 2 }} />
 
                 {/* Dashboard Icon */}
                 <Tooltip title="Dashboard" placement="right">
                     <ListItem
-                        button
+                        button // Use this to treat ListItem as a button
                         onClick={() => handleItemClick('/staff/dashboard')}
                         selected={activeItem === '/staff/dashboard'}
                         sx={{
                             justifyContent: 'center',
+                            width: '100%',
                             '&.Mui-selected': {
-                                backgroundColor: '#007bff',
-                                color: '#fff',
+                                backgroundColor: '#0056b3',
+                                color: '#ffffff',
                             },
                         }}
                     >
-                        <ListItemIcon sx={{ justifyContent: 'center' }}>
-                            <Dashboard sx={{ color: activeItem === '/staff/dashboard' ? '#fff' : '#000' }} />
+                        <ListItemIcon sx={{ justifyContent: 'center', color: activeItem === '/staff/dashboard' ? '#ffffff' : '#3f51b5' }}>
+                            <Dashboard />
                         </ListItemIcon>
                     </ListItem>
                 </Tooltip>
 
+                {/* Divider for separation */}
+                <Divider sx={{ width: '70%', my: 2 }} />
+
                 {/* Gross Management Icon */}
                 <Tooltip title="Gestion du Gross" placement="right">
                     <ListItem
-                        button
+                        button // Use this to treat ListItem as a button
                         onClick={() => handleItemClick('/staff/gross')}
                         selected={activeItem === '/staff/gross'}
                         sx={{
                             justifyContent: 'center',
+                            width: '100%',
                             '&.Mui-selected': {
-                                backgroundColor: '#00ef34',
-                                color: '#ef4ff3',
+                                backgroundColor: '#28a745',
+                                color: '#ffffff',
                             },
                         }}
                     >
-                        <ListItemIcon sx={{ justifyContent: 'center' }}>
-                            <AttachMoney sx={{ color: activeItem === '/staff/gross' ? '#fff' : '#000' }} />
+                        <ListItemIcon sx={{ justifyContent: 'center', color: activeItem === '/staff/gross' ? '#ffffff' : '#3f51b5' }}>
+                            <AttachMoney />
                         </ListItemIcon>
                     </ListItem>
                 </Tooltip>

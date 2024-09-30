@@ -1,5 +1,3 @@
-// src/components/gross/GrossPage.jsx
-
 import React, { useState, useEffect } from 'react';
 import { Container, Typography, Button, Box, CircularProgress, Paper } from '@mui/material';
 import axios from 'axios';
@@ -19,8 +17,7 @@ const GrossPage = () => {
 
                 // Extract the status and total amount from the gross data
                 setGrossStatus(latestGross.Status);
-                setGrossTotal(latestGross.TotalGross || 0); // Assuming TotalAmount is the field name for the gross total
-                console.log(latestGross)
+                setGrossTotal(latestGross.TotalGross || 0); // Assuming TotalGross is the field name for the gross total
             } catch (error) {
                 console.error('Error fetching Gross details:', error);
             } finally {
@@ -85,16 +82,8 @@ const GrossPage = () => {
                         )}
 
                         <Box sx={{ mt: 3 }}>
-                            {grossStatus === null ? (
-                                <Button
-                                    variant="contained"
-                                    color="primary"
-                                    onClick={handleCreateGross}
-                                    sx={{ fontWeight: 'bold', padding: '12px 24px', mb: 2 }}
-                                >
-                                    Ouvrir un Nouveau Gross
-                                </Button>
-                            ) : grossStatus === 'Open' ? (
+                            {grossStatus === 'Open' ? (
+                                // Show "Close Gross" button when the status is Open
                                 <Button
                                     variant="contained"
                                     color="secondary"
@@ -104,11 +93,24 @@ const GrossPage = () => {
                                     Fermer le Gross
                                 </Button>
                             ) : (
-                                <Typography variant="h6" color="error" sx={{ fontWeight: 'bold' }}>
-                                    Le gross est fermé pour aujourd'hui.
-                                </Typography>
+                                // Show "Open New Gross" button when the status is Closed or not found
+                                <Button
+                                    variant="contained"
+                                    color="primary"
+                                    onClick={handleCreateGross}
+                                    sx={{ fontWeight: 'bold', padding: '12px 24px', mb: 2 }}
+                                >
+                                    Ouvrir un Nouveau Gross
+                                </Button>
                             )}
                         </Box>
+
+                        {/* Display closed message if the gross is closed */}
+                        {grossStatus === 'Closed' && (
+                            <Typography variant="h6" color="error" sx={{ fontWeight: 'bold' }}>
+                                Le gross est fermé pour aujourd'hui.
+                            </Typography>
+                        )}
                     </>
                 )}
             </Paper>

@@ -21,10 +21,24 @@ const Dashboard = () => {
     useEffect(() => {
         const fetchPendingOrders = async () => {
             try {
+                console.log('Fetching pending orders...');
+                
                 const response = await axios.get(`${process.env.REACT_APP_API_URL}/Order/GetOrderByStatus/Pending`);
+                
+                console.log('Response data:', response.data); // Log the full response data
+                console.log('Response status:', response.status); // Log the status code
+                console.log('Response headers:', response.headers); // Log the headers
+
+                // Set pending orders state
                 setPendingOrders(response.data);
             } catch (error) {
                 console.error('Error fetching orders:', error);
+                // Log specific error details if available
+                if (error.response) {
+                    console.error('Error response data:', error.response.data);
+                    console.error('Error response status:', error.response.status);
+                    console.error('Error response headers:', error.response.headers);
+                }
             }
         };
 
@@ -33,7 +47,14 @@ const Dashboard = () => {
 
     // Handle order click to navigate to Order page
     const handleOrderClick = (order) => {
+        console.log('Selected Order:', order); // Log the selected order
         setSelectedOrder(order); // Store selected order in context
+
+        // Verify that setSelectedOrder worked, add a brief timeout to log the context value
+        setTimeout(() => {
+            console.log('Order set in context:', order);
+        }, 100);
+
         navigate('/staff/order'); // Redirect to order page
     };
 
@@ -77,7 +98,7 @@ const Dashboard = () => {
                                                 <ul>
                                                     {order.Items.map((item, index) => (
                                                         <li key={index}>
-                                                            {item.Name} x {item.Quantity} - {item.Price} CFA
+                                                            {item.Name} x {item.Quantity} - {item.PriceDineIn || item.PriceDelivery || 'N/A'} CFA
                                                         </li>
                                                     ))}
                                                 </ul>

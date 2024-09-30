@@ -1,4 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+
 import {
     Grid,
     Typography,
@@ -17,34 +20,58 @@ import {
     List,
     ListItem,
     IconButton,
-    ListItemText,
-    Divider
+    Divider,
 } from '@mui/material';
 import { Money, CreditCard, MobileFriendly, Replay } from '@mui/icons-material';
 import { Delete, AddCircle, RemoveCircle } from '@mui/icons-material';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
+import { useOrder } from '../../context/OrderContext';
 
-const NewOrderPage = () => {
+const Order = () => {
     const [categories, setCategories] = useState([]);
     const [items, setItems] = useState([]);
-    const [selectedCategory, setSelectedCategory] = useState(null);
     const [cart, setCart] = useState([]);
-    const [ingredientsCategories, setIngredientsCategories] = useState([]);
-    const [availableIngredients, setAvailableIngredients] = useState([]);
-    const [selectedItem, setSelectedItem] = useState(null);
-    const [removals, setRemovals] = useState([]);
-    const [addOns, setAddOns] = useState([]);
-    const [openDialog, setOpenDialog] = useState(false);
-    const [openPaymentDialog, setOpenPaymentDialog] = useState(false);
-    const [error, setError] = useState('');
-    const [selectedIngredientCategory, setSelectedIngredientCategory] = useState('');
-    const [activeTab, setActiveTab] = useState('remove');
     const [orderType, setOrderType] = useState('Dine In');
     const [tableNumber, setTableNumber] = useState('');
-    const [orderNumber, setOrderNumber] = useState(1001);
     const [paymentMethod, setPaymentMethod] = useState('');
+    const [orderNumber] = useState(1001); // Example order number
 
+    const [selectedCategory, setSelectedCategory] = useState(null);
+    const [selectedItem, setSelectedItem] = useState(null);
+    const [openDialog, setOpenDialog] = useState(false);
+    const [openPaymentDialog, setOpenPaymentDialog] = useState(false);
+
+    const [ingredientsCategories, setIngredientsCategories] = useState([]);
+    const [availableIngredients, setAvailableIngredients] = useState([]);
+    const [removals, setRemovals] = useState([]);
+    const [addOns, setAddOns] = useState([]);
+    const [selectedIngredientCategory, setSelectedIngredientCategory] = useState('');
+    const [activeTab, setActiveTab] = useState('remove');
+    const [error, setError] = useState('');
+
+    const navigate = useNavigate();
     const tableNumbers = Array.from({ length: 20 }, (_, i) => i + 1);
+
+    const { selectedOrder } = useOrder(); // Get selected order from context
+
+    // Populate cart with selectedOrder items when component mounts
+    useEffect(() => {
+        if (selectedOrder && selectedOrder.Items) {
+            const itemsToCart = selectedOrder.Items.map((item) => ({
+                _id: item._id,
+                Name: item.Name,
+                price: item.PriceDineIn,
+                pricedel: item.PriceDelivery,
+                quantity: item.Quantity,
+                removals: item.Removals,
+                addOns: item.AddOns,
+            }));
+            setCart(itemsToCart);
+            setOrderType(selectedOrder.Type);
+            setTableNumber(selectedOrder.TableNumber);
+        }
+    }, [selectedOrder]);
 
     useEffect(() => {
         const fetchCategories = async () => {
@@ -52,65 +79,53 @@ const NewOrderPage = () => {
                 const response = await axios.get(`${process.env.REACT_APP_API_URL}/Category/GetAllCategories`);
                 setCategories(response.data);
                 setSelectedCategory(response.data[0]?.Name);
-            } catch (error) {
-                console.error('Erreur lors de la récupération des catégories:', error);
+            } catch (err) {
+                console.error('Error fetching categories:', err);
             }
         };
         fetchCategories();
     }, []);
 
     useEffect(() => {
-        if (selectedCategory) {
-            const fetchItems = async () => {
-                try {
-                    const response = await axios.get(`${process.env.REACT_APP_API_URL}/Item/GetItemsByCategory/${selectedCategory}`);
-                    setItems(response.data.length === 0 ? [] : response.data);
-                    setError(response.data.length === 0 ? 'Aucun article trouvé' : '');
-                } catch (error) {
-                    console.error('Erreur lors de la récupération des articles:', error);
-                    setError('Erreur lors de la récupération des articles');
-                }
-            };
-            fetchItems();
-        }
+        if (!selectedCategory) return;
+
+        const fetchItems = async () => {
+            try {
+                const response = await axios.get(`${process.env.REACT_APP_API_URL}/Item/GetItemsByCategory/${selectedCategory}`);
+                setItems(response.data.length === 0 ? [] : response.data);
+                setError(response.data.length === 0 ? 'No items found' : '');
+            } catch (err) {
+                console.error('Error fetching items:', err);
+                setError('Error fetching items');
+            }
+        };
+        fetchItems();
     }, [selectedCategory]);
 
     useEffect(() => {
         const fetchIngredients = async () => {
             try {
                 const response = await axios.get(`${process.env.REACT_APP_API_URL}/Ingredients/GetAllIngredients`);
-                const parsedIngredients = parseIngredients(response.data);
+                const parsedIngredients = response.data.map((categoryObj) => {
+                    const categoryName = Object.keys(categoryObj).find((key) => key !== '_id');
+                    return {
+                        categoryName,
+                        ingredients: categoryObj[categoryName] || [],
+                    };
+                });
                 setIngredientsCategories(parsedIngredients);
-            } catch (error) {
-                console.error('Erreur lors de la récupération des ingrédients:', error);
+            } catch (err) {
+                console.error('Error fetching ingredients:', err);
             }
         };
         fetchIngredients();
     }, []);
 
-    const parseIngredients = (data) => {
-        return data.map((categoryObj) => {
-            const categoryName = Object.keys(categoryObj).find((key) => key !== '_id');
-            return {
-                categoryName: categoryName,
-                ingredients: categoryObj[categoryName] || [],
-            };
-        });
-    };
-
     const handleItemClick = (item) => {
         setSelectedItem({ ...item, quantity: 1 });
-        setRemovals([]);
-        setAddOns([]);
+        setRemovals([]); // Reset removals for each item
+        setAddOns([]); // Reset add-ons for each item
         setOpenDialog(true);
-    };
-
-    const areItemsEqual = (item1, item2) => {
-        return (
-            item1._id === item2._id &&
-            JSON.stringify(item1.removals) === JSON.stringify(item2.removals) &&
-            JSON.stringify(item1.addOns) === JSON.stringify(item2.addOns)
-        );
     };
 
     const handleSaveItem = () => {
@@ -119,7 +134,13 @@ const NewOrderPage = () => {
             removals,
             addOns,
         };
-        const existingItemIndex = cart.findIndex(cartItem => areItemsEqual(cartItem, updatedItem));
+
+        const existingItemIndex = cart.findIndex(
+            (cartItem) =>
+                cartItem._id === updatedItem._id &&
+                JSON.stringify(cartItem.removals) === JSON.stringify(updatedItem.removals) &&
+                JSON.stringify(cartItem.addOns) === JSON.stringify(updatedItem.addOns)
+        );
 
         if (existingItemIndex > -1) {
             const updatedCart = [...cart];
@@ -129,96 +150,132 @@ const NewOrderPage = () => {
             setCart([...cart, updatedItem]);
         }
 
+        console.log('Item saved to cart:', updatedItem);
         setOpenDialog(false);
     };
 
     const handleIngredientCategoryChange = (category) => {
         setSelectedIngredientCategory(category);
-        const selectedCategory = ingredientsCategories.find((cat) => cat.categoryName === category);
-        setAvailableIngredients(selectedCategory ? selectedCategory.ingredients : []);
+        const selectedCat = ingredientsCategories.find((cat) => cat.categoryName === category);
+        setAvailableIngredients(selectedCat ? selectedCat.ingredients : []);
     };
 
-    const handleOrderTypeChange = (event, newType) => {
-        setOrderType(newType);
-    };
+    const handleOrderTypeChange = (event, newType) => setOrderType(newType);
 
-    const handleTableNumberSelect = (num) => {
-        setTableNumber(num);
-    };
+    const handleTableNumberSelect = (num) => setTableNumber(num);
 
     const handleQuantityChange = (item, type) => {
-        setCart(cart.map(cartItem =>
-            cartItem._id === item._id
-                ? { ...cartItem, quantity: type === 'increase' ? cartItem.quantity + 1 : cartItem.quantity - 1 }
-                : cartItem
-        ));
+        setCart(
+            cart.map((cartItem) =>
+                cartItem._id === item._id
+                    ? { ...cartItem, quantity: type === 'increase' ? cartItem.quantity + 1 : cartItem.quantity - 1 }
+                    : cartItem
+            )
+        );
     };
 
     const toggleRemoveIngredient = (ingredient) => {
         setRemovals((prev) =>
             prev.includes(ingredient) ? prev.filter((rem) => rem !== ingredient) : [...prev, ingredient]
         );
+        console.log('Removals:', removals);
     };
 
     const toggleAddIngredient = (ingredient) => {
         setAddOns((prev) =>
             prev.includes(ingredient) ? prev.filter((add) => add !== ingredient) : [...prev, ingredient]
         );
+        console.log('Add-ons:', addOns);
     };
 
-    const calculateItemPrice = (item) => {
-        return orderType === 'Dine In' ? item.price : item.pricedel;
-    };
+    const calculateItemPrice = (item) => (orderType === 'Dine In' ? item.price : item.pricedel);
 
     const handleValidateOrder = () => {
-        if (orderType === 'Dine In') {
-            // If the order is Dine In, submit the order directly without payment
-            submitOrder();
-        } else {
-            // If the order is for Takeaway, open the payment dialog
-            setOpenPaymentDialog(true);
+        if (orderType === 'Dine In' && !tableNumber) {
+            toast.warn('Please select a table number for Dine In orders.', {
+                position: "bottom-center",
+                autoClose: 3000,
+                hideProgressBar: false,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+                progress: undefined,
+            });
+            return;
         }
+    
+        setOpenPaymentDialog(true);
     };
-
-    const submitOrder = () => {
-        // Handle the logic for submitting the order
-        console.log('Order submitted:', cart, orderType, tableNumber);
-        // Here you would send the order to the backend or handle it accordingly
-        // Clear cart or navigate to a different page as needed
-        setCart([]);
-        // Optionally reset table number and payment method
-        setTableNumber('');
-        setPaymentMethod('');
+    
+    const submitOrder = async (status) => {
+        const validatedItems = cart.map((item) => ({
+            CategoryName: item.CategoryName || 'Unknown Category',
+            Name: item.Name || 'Unknown Item',
+            Description: item.Description || 'No description',
+            PriceDineIn: item.price || 0,
+            PriceDelivery: item.pricedel || 0,
+            Quantity: item.quantity || 1,
+            Rating: item.Rating || 0,
+            Ingredients: item.Ingredients ? item.Ingredients.map((ing) => ing.Name) : [],
+            Removals: item.removals ? item.removals.map((rem) => rem.Name) : [],
+            AddOns: item.addOns ? item.addOns.map((addOn) => ({ Name: addOn.Name, Price: addOn.Price || 0 })) : [],
+        }));
+    
+        const orderToSubmit = {
+            Type: orderType || 'Dine In',
+            Status: status, // Use the provided status
+            Items: validatedItems,
+            TableNumber: orderType === 'Dine In' ? (tableNumber || '1') : null,
+            DeliveryCharge: orderType === 'Takeaway' ? 2.5 : 0,
+            Location: orderType === 'Takeaway' ? '123 Main St, Cityville' : 'Restaurant',
+        };
+    
+        console.log('Order to be submitted:', JSON.stringify(orderToSubmit, null, 2));
+    
+        try {
+            const response = await axios.post(`${process.env.REACT_APP_API_URL}/Order/CreateOrder`, orderToSubmit);
+            console.log('Order created successfully:', response.data);
+            setCart([]);
+            setTableNumber('');
+            setPaymentMethod('');
+        } catch (err) {
+            console.error('Error creating order:', err);
+            if (err.response) {
+                console.error('Response data:', err.response.data);
+                console.error('Response status:', err.response.status);
+                console.error('Response headers:', err.response.headers);
+            }
+        }
     };
 
     const handlePaymentMethodChange = (method) => {
         setPaymentMethod(method);
-        // Submit the order after selecting a payment method
-        submitOrder();
+    
+        // Adjust the status based on the payment method before submitting
+        const status = method === 'Pay Later' ? 'Pending' : 'Done';
+    
+        submitOrder(status);
         setOpenPaymentDialog(false);
     };
 
+    const removeFromCart = (itemToRemove) => setCart(cart.filter(cartItem => cartItem._id !== itemToRemove._id));
+
     return (
-        <Container maxWidth="xl" sx={{ padding: 0, margin: 0 }}>
+        <Container maxWidth={false} sx={{ padding: 0, margin: 0, display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
             <Grid container spacing={1} sx={{ height: '100vh', overflow: 'hidden' }}>
                 {/* Categories Section */}
                 <Grid item xs={2} sx={{ backgroundColor: '#f0f0f0', padding: 1, boxShadow: 3, borderRight: '1px solid #e0e0e0' }}>
                     <Typography variant="h6" sx={{ mb: 1, fontWeight: 'bold', textAlign: 'center' }}>
-                        Catégories
+                        Categories
                     </Typography>
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, overflowY: 'auto', height: '90vh' }}>
                         {categories.map((category) => (
                             <Button
-                                key={category.Name}
+                                key={category._id || category.Name}
                                 variant={selectedCategory === category.Name ? 'contained' : 'outlined'}
                                 onClick={() => setSelectedCategory(category.Name)}
                                 fullWidth
-                                sx={{
-                                    padding: '10px',
-                                    fontSize: '14px',
-                                    fontWeight: '500',
-                                    borderRadius: '8px',
-                                }}
+                                sx={{ padding: '10px', fontSize: '14px', fontWeight: '500', borderRadius: '8px' }}
                             >
                                 {category.Name}
                             </Button>
@@ -229,30 +286,24 @@ const NewOrderPage = () => {
                 {/* Items Section */}
                 <Grid item xs={6} sx={{ padding: 1 }}>
                     <Typography variant="h6" sx={{ mb: 1, textAlign: 'center', fontWeight: 'bold' }}>
-                        Nouvelle Commande - N°{orderNumber}
+                        New Order - N°{orderNumber}
                     </Typography>
-                    {/* Order Type Selection */}
                     <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1, mb: 1 }}>
-                        <ToggleButtonGroup
-                            value={orderType}
-                            exclusive
-                            onChange={handleOrderTypeChange}
-                        >
+                        <ToggleButtonGroup value={orderType} exclusive onChange={handleOrderTypeChange}>
                             <ToggleButton value="Dine In" sx={{ fontWeight: 'bold' }}>
-                                Sur Place
+                                Dine In
                             </ToggleButton>
                             <ToggleButton value="Takeaway" sx={{ fontWeight: 'bold' }}>
-                                À Emporter
+                                Takeaway
                             </ToggleButton>
                         </ToggleButtonGroup>
                     </Box>
 
-                    {/* Table Number Selection */}
                     {orderType === 'Dine In' && (
                         <Box sx={{ display: 'flex', gap: 1, overflowX: 'auto', mb: 2, padding: '4px', justifyContent: 'center' }}>
                             {tableNumbers.map((num) => (
                                 <Button
-                                    key={num}
+                                    key={`table-${num}`}
                                     variant={tableNumber === num ? 'contained' : 'outlined'}
                                     onClick={() => handleTableNumberSelect(num)}
                                     sx={{ minWidth: '50px', fontSize: '12px', padding: '6px' }}
@@ -264,10 +315,12 @@ const NewOrderPage = () => {
                     )}
 
                     <Typography variant="h6" sx={{ mb: 1, fontWeight: 'bold' }}>
-                        Sélectionner un Article
+                        Select an Item
                     </Typography>
                     {error ? (
-                        <Typography variant="body1" color="error" textAlign="center">{error}</Typography>
+                        <Typography variant="body1" color="error" textAlign="center">
+                            {error}
+                        </Typography>
                     ) : (
                         <Grid container spacing={1} sx={{ maxHeight: '70vh', overflowY: 'auto', paddingRight: '8px' }}>
                             {items.map((item) => (
@@ -295,24 +348,20 @@ const NewOrderPage = () => {
                 {/* Cart Section */}
                 <Grid item xs={4} sx={{ backgroundColor: '#f0f0f0', padding: 1, boxShadow: 3, borderLeft: '1px solid #e0e0e0' }}>
                     <Typography variant="h6" sx={{ mb: 1, fontWeight: 'bold', textAlign: 'center' }}>
-                        Panier
+                        Cart
                     </Typography>
                     {cart.length === 0 ? (
                         <Typography color="textSecondary" textAlign="center">
-                            Votre panier est vide
+                            Your cart is empty
                         </Typography>
                     ) : (
                         <Box sx={{ maxHeight: '75vh', overflowY: 'auto', padding: '8px' }}>
                             <List dense>
                                 {cart.map((cartItem, index) => (
-                                    <React.Fragment key={index}>
+                                    <React.Fragment key={`cart-${cartItem._id}-${index}`}>
                                         <ListItem
                                             secondaryAction={
-                                                <IconButton
-                                                    edge="end"
-                                                    aria-label="delete"
-                                                    onClick={() => setCart(cart.filter((_, idx) => idx !== index))}
-                                                >
+                                                <IconButton edge="end" aria-label="delete" onClick={() => removeFromCart(cartItem)}>
                                                     <Delete />
                                                 </IconButton>
                                             }
@@ -323,16 +372,16 @@ const NewOrderPage = () => {
                                                     {cartItem.Name}
                                                 </Typography>
                                                 <Typography variant="body2">
-                                                    {calculateItemPrice(cartItem)} CFA x {cartItem.quantity}
+                                                    {orderType === 'Dine In' ? cartItem.price : cartItem.pricedel} CFA x {cartItem.quantity}
                                                 </Typography>
-                                                {cartItem.removals.length > 0 && (
-                                                    <Typography variant="body2" color="textSecondary">
-                                                        <strong>Retirés:</strong> {cartItem.removals.map(rem => rem.Name).join(', ')}
+                                                {cartItem.removals && cartItem.removals.length > 0 && (
+                                                    <Typography variant="body2" color="error">
+                                                        Removals: {cartItem.removals.map(rem => rem.Name).join(', ')}
                                                     </Typography>
                                                 )}
-                                                {cartItem.addOns.length > 0 && (
-                                                    <Typography variant="body2" color="textSecondary">
-                                                        <strong>Ajouts:</strong> {cartItem.addOns.map(addOn => addOn.Name).join(', ')}
+                                                {cartItem.addOns && cartItem.addOns.length > 0 && (
+                                                    <Typography variant="body2" color="primary">
+                                                        Add-ons: {cartItem.addOns.map(add => add.Name).join(', ')}
                                                     </Typography>
                                                 )}
                                             </Box>
@@ -345,11 +394,10 @@ const NewOrderPage = () => {
                                                 >
                                                     <RemoveCircle />
                                                 </IconButton>
-                                                <Typography variant="body1" sx={{ mx: 1 }}>{cartItem.quantity}</Typography>
-                                                <IconButton
-                                                    aria-label="increase"
-                                                    onClick={() => handleQuantityChange(cartItem, 'increase')}
-                                                >
+                                                <Typography variant="body1" sx={{ mx: 1 }}>
+                                                    {cartItem.quantity}
+                                                </Typography>
+                                                <IconButton aria-label="increase" onClick={() => handleQuantityChange(cartItem, 'increase')}>
                                                     <AddCircle />
                                                 </IconButton>
                                             </Box>
@@ -368,7 +416,7 @@ const NewOrderPage = () => {
                             sx={{ padding: '10px', mt: 2, fontWeight: 'bold' }}
                             onClick={handleValidateOrder}
                         >
-                            VALIDER LA COMMANDE
+                            Place Order
                         </Button>
                     )}
                 </Grid>
@@ -376,22 +424,27 @@ const NewOrderPage = () => {
 
             {/* Item Editing Modal */}
             <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="md">
-                <DialogTitle>Modifier {selectedItem?.Name}</DialogTitle>
+                <DialogTitle>Edit {selectedItem?.Name}</DialogTitle>
                 <DialogContent dividers>
-                    {/* Tabs for Retirer and Ajouter */}
                     <ToggleButtonGroup
                         value={activeTab}
                         exclusive
                         onChange={(e, newTab) => setActiveTab(newTab)}
                         sx={{ mb: 3 }}
                     >
-                        <ToggleButton value="remove" sx={{ fontWeight: 'bold' }}>Retirer</ToggleButton>
-                        <ToggleButton value="add" sx={{ fontWeight: 'bold' }}>Ajouter</ToggleButton>
+                        <ToggleButton value="remove" sx={{ fontWeight: 'bold' }}>
+                            Remove
+                        </ToggleButton>
+                        <ToggleButton value="add" sx={{ fontWeight: 'bold' }}>
+                            Add
+                        </ToggleButton>
                     </ToggleButtonGroup>
 
                     {activeTab === 'remove' && (
                         <Box>
-                            <Typography variant="h6" sx={{ mt: 2, fontWeight: 'bold' }}>Retirer</Typography>
+                            <Typography variant="h6" sx={{ mt: 2, fontWeight: 'bold' }}>
+                                Remove Ingredients
+                            </Typography>
                             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 2 }}>
                                 {selectedItem?.Ingredients?.map((ingredient, index) => (
                                     <Chip
@@ -408,54 +461,48 @@ const NewOrderPage = () => {
 
                     {activeTab === 'add' && (
                         <Box>
-                            <Typography variant="h6" sx={{ mt: 2, fontWeight: 'bold' }}>Catégories d'ingrédients</Typography>
-                            <Box sx={{ display: 'flex', gap: 2, mt: 2, overflow: 'auto' }}>
-                                {ingredientsCategories.map((category, index) => (
+                            <Typography variant="h6" sx={{ mt: 2, fontWeight: 'bold' }}>
+                                Add Ingredients
+                            </Typography>
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
+                                {ingredientsCategories.map((cat, index) => (
                                     <Button
                                         key={index}
-                                        variant={selectedIngredientCategory === category.categoryName ? 'contained' : 'outlined'}
-                                        onClick={() => handleIngredientCategoryChange(category.categoryName)}
-                                        sx={{ minWidth: '100px', fontWeight: 'bold' }}
+                                        variant="outlined"
+                                        onClick={() => handleIngredientCategoryChange(cat.categoryName)}
+                                        sx={{ fontWeight: 'bold' }}
                                     >
-                                        {category.categoryName}
+                                        {cat.categoryName}
                                     </Button>
                                 ))}
                             </Box>
-
-                            {selectedIngredientCategory && (
-                                <>
-                                    <Typography variant="h6" sx={{ mt: 3, fontWeight: 'bold' }}>Ingrédients</Typography>
-                                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 2 }}>
-                                        {availableIngredients.map((ingredient, index) => (
-                                            <Chip
-                                                key={index}
-                                                label={`${ingredient.Name} - ${ingredient.Price} CFA`}
-                                                color={addOns.includes(ingredient) ? 'primary' : 'default'}
-                                                onClick={() => toggleAddIngredient(ingredient)}
-                                                sx={{ fontWeight: 'bold', cursor: 'pointer' }}
-                                            />
-                                        ))}
-                                    </Box>
-                                </>
-                            )}
+                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 2 }}>
+                                {availableIngredients.map((ingredient, index) => (
+                                    <Chip
+                                        key={index}
+                                        label={ingredient.Name}
+                                        color={addOns.includes(ingredient) ? 'primary' : 'default'}
+                                        onClick={() => toggleAddIngredient(ingredient)}
+                                        sx={{ fontWeight: 'bold', cursor: 'pointer' }}
+                                    />
+                                ))}
+                            </Box>
                         </Box>
                     )}
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={() => setOpenDialog(false)} color="secondary" sx={{ fontWeight: 'bold' }}>
-                        Annuler
+                        Cancel
                     </Button>
                     <Button onClick={handleSaveItem} variant="contained" color="primary" sx={{ fontWeight: 'bold' }}>
-                        Sauvegarder
+                        Save
                     </Button>
                 </DialogActions>
             </Dialog>
 
             {/* Payment Selection Modal */}
             <Dialog open={openPaymentDialog} onClose={() => setOpenPaymentDialog(false)} maxWidth="sm">
-                <DialogTitle sx={{ fontWeight: 'bold', textAlign: 'center' }}>
-                    Sélectionner le Mode de Paiement
-                </DialogTitle>
+                <DialogTitle sx={{ fontWeight: 'bold', textAlign: 'center' }}>Select Payment Method</DialogTitle>
                 <DialogContent dividers>
                     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, padding: 2 }}>
                         <Button
@@ -475,7 +522,7 @@ const NewOrderPage = () => {
                             onClick={() => handlePaymentMethodChange('Card')}
                             startIcon={<CreditCard sx={{ fontSize: 30, marginRight: '10px' }} />}
                         >
-                            Carte
+                            Card
                         </Button>
 
                         <Button
@@ -492,28 +539,16 @@ const NewOrderPage = () => {
                             variant="contained"
                             color="warning"
                             sx={{ padding: '20px', fontSize: '18px', fontWeight: 'bold', display: 'flex', justifyContent: 'flex-start', alignItems: 'center' }}
-                            onClick={() => handlePaymentMethodChange('Retour')}
+                            onClick={() => handlePaymentMethodChange('Pay Later')}
                             startIcon={<Replay sx={{ fontSize: 30, marginRight: '10px' }} />}
                         >
-                            Retour
+                            Pay Later
                         </Button>
                     </Box>
                 </DialogContent>
                 <DialogActions>
-                    <Button
-                        onClick={() => setOpenPaymentDialog(false)}
-                        color="secondary"
-                        sx={{ fontWeight: 'bold', padding: '12px 20px', minWidth: '120px' }}
-                    >
-                        Annuler
-                    </Button>
-                    <Button
-                        variant="contained"
-                        color="primary"
-                        sx={{ fontWeight: 'bold', padding: '12px 20px', minWidth: '120px' }}
-                        onClick={() => handlePaymentMethodChange(paymentMethod)}
-                    >
-                        Confirmer le Paiement
+                    <Button onClick={() => setOpenPaymentDialog(false)} color="secondary" sx={{ fontWeight: 'bold' }}>
+                        Cancel
                     </Button>
                 </DialogActions>
             </Dialog>
@@ -521,4 +556,4 @@ const NewOrderPage = () => {
     );
 };
 
-export default NewOrderPage;
+export default Order;

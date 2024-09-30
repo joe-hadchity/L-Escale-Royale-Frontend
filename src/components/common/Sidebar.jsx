@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom'; // Import useNavigate and useLocation
-import { Box, List, ListItem, ListItemText, ListItemIcon, Button, Divider } from '@mui/material';
-import LogoutIcon from '@mui/icons-material/Logout'; // MUI icon for logout
+import { useNavigate, useLocation } from 'react-router-dom';
+import { Box, List, ListItem, ListItemText, ListItemIcon, Divider } from '@mui/material';
+import LogoutIcon from '@mui/icons-material/Logout';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import CategoryIcon from '@mui/icons-material/Category';
 import PeopleIcon from '@mui/icons-material/People';
 import RestaurantIcon from '@mui/icons-material/Restaurant';
 import PaymentsIcon from '@mui/icons-material/Payments';
 import HistoryIcon from '@mui/icons-material/History';
-import logo from '../../assets/l-escale-royale-logo.png'; // Correct logo path
+import logo from '../../assets/l-escale-royale-logo.png';
 
 const Sidebar = () => {
   const navigate = useNavigate();
@@ -48,11 +48,19 @@ const Sidebar = () => {
         zIndex: 1000,
       }}
     >
+      {/* Logo Section */}
       <Box
         sx={{
           textAlign: 'center',
-          marginBottom: '30px',
+          marginBottom: '40px',
           cursor: 'pointer',
+          padding: '10px',
+          borderRadius: '8px',
+          backgroundColor: '#ffffff',
+          boxShadow: 2,
+          '&:hover': {
+            backgroundColor: 'primary.light',
+          },
         }}
         onClick={handleLogoClick}
       >
@@ -77,17 +85,19 @@ const Sidebar = () => {
             sx={{
               borderRadius: '10px',
               marginBottom: '10px',
-              backgroundColor: activeItem === item.path ? 'primary.main' : 'white',
-              color: activeItem === item.path ? 'white' : 'black',
+              backgroundColor: activeItem === item.path ? 'secondary.main' : 'white',
+              color: activeItem === item.path ? 'white' : 'text.primary',
+              boxShadow: activeItem === item.path ? 3 : 1,
               '&:hover': {
-                backgroundColor: 'primary.light',
+                backgroundColor: activeItem === item.path ? 'secondary.dark' : 'primary.light',
                 color: 'white',
               },
+              transition: 'all 0.3s ease',
             }}
           >
             <ListItemIcon
               sx={{
-                color: activeItem === item.path ? 'white' : 'black',
+                color: activeItem === item.path ? 'white' : 'primary.main',
               }}
             >
               {item.icon}
@@ -96,7 +106,7 @@ const Sidebar = () => {
           </ListItem>
         ))}
 
-        <Divider sx={{ margin: '20px 0' }} />
+        <Divider sx={{ margin: '30px 0' }} />
 
         {/* Logout Button */}
         <ListItem
@@ -109,9 +119,10 @@ const Sidebar = () => {
             border: '2px solid',
             borderColor: 'error.main',
             '&:hover': {
-              backgroundColor: 'error.main',
+              backgroundColor: 'error.dark',
               color: 'white',
             },
+            transition: 'all 0.3s ease',
           }}
         >
           <ListItemIcon
