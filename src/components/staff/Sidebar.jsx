@@ -1,110 +1,100 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Drawer, List, ListItem, ListItemIcon, Tooltip, Divider } from '@mui/material';
-import { Dashboard, RestaurantMenu, AttachMoney, Home } from '@mui/icons-material';
+import { Drawer, List, ListItemButton, ListItemIcon, Tooltip, Divider, Box, styled } from '@mui/material';
+import { Dashboard, AttachMoney, Home } from '@mui/icons-material';
+
+// Styled Drawer to make the styles cleaner and reusable
+const StyledDrawer = styled(Drawer)(({ theme }) => ({
+    width: 80,
+    flexShrink: 0,
+    '& .MuiDrawer-paper': {
+        width: 80,
+        boxSizing: 'border-box',
+        background: 'linear-gradient(145deg, #e0e0e0, #cfcfcf)',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderRight: 'none',
+        overflow: 'hidden', // Remove scrollbars
+    },
+}));
+
+// Styled ListItemButton for consistent active and hover states
+const StyledListItemButton = styled(ListItemButton)(({ theme }) => ({
+    justifyContent: 'center',
+    width: '60px', // Set a fixed width for square shape
+    height: '60px', // Set height equal to width for a square shape
+    marginBottom: theme.spacing(2), // Add space between buttons
+    borderRadius: theme.shape.borderRadius, // Optional rounded corners
+    transition: 'background-color 0.3s',
+    '&.Mui-selected': {
+        backgroundColor: theme.palette.primary.main,
+        color: theme.palette.common.white,
+        '& .MuiListItemIcon-root': {
+            color: theme.palette.common.white,
+        },
+    },
+    '&:hover': {
+        backgroundColor: theme.palette.primary.light,
+        color: theme.palette.common.white,
+        '& .MuiListItemIcon-root': {
+            color: theme.palette.common.white,
+        },
+    },
+}));
 
 const Sidebar = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const activeItem = location.pathname;
 
-    // Handle item click and set active item
+    // Sidebar menu items
+    const menuItems = [
+        { title: 'Home', icon: <Home />, path: '/staff/' },
+        { title: 'Dashboard', icon: <Dashboard />, path: '/staff/dashboard' },
+        { title: 'Gestion du Gross', icon: <AttachMoney />, path: '/staff/gross' },
+    ];
+
+    // Handle item click
     const handleItemClick = (path) => {
         navigate(path);
     };
 
     return (
-        <Drawer
-            variant="permanent"
-            anchor="left"
-            sx={{
-                width: '80px',
-                flexShrink: 0,
-                '& .MuiDrawer-paper': {
-                    width: '80px',
-                    boxSizing: 'border-box',
-                    background: 'linear-gradient(145deg, #e0e0e0, #cfcfcf)',
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                },
-            }}
-        >
-            {/* Centered Sidebar Content */}
-            <List sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', p: 0 }}>
-                
-                {/* Home Icon */}
-                <Tooltip title="Home" placement="right">
-                    <ListItem
-                        button // Use this to treat ListItem as a button
-                        onClick={() => handleItemClick('/staff/')}
-                        selected={activeItem === '/staff/'}
-                        sx={{
-                            justifyContent: 'center',
-                            width: '100%',
-                            '&.Mui-selected': {
-                                backgroundColor: '#0056b3',
-                                color: '#ffffff',
-                            },
-                        }}
-                    >
-                        <ListItemIcon sx={{ justifyContent: 'center', color: activeItem === '/staff/' ? '#ffffff' : '#3f51b5' }}>
-                            <Home />
-                        </ListItemIcon>
-                    </ListItem>
-                </Tooltip>
-
-                {/* Divider for separation */}
-                <Divider sx={{ width: '70%', my: 2 }} />
-
-               
-
-                {/* Dashboard Icon */}
-                <Tooltip title="Dashboard" placement="right">
-                    <ListItem
-                        button // Use this to treat ListItem as a button
-                        onClick={() => handleItemClick('/staff/dashboard')}
-                        selected={activeItem === '/staff/dashboard'}
-                        sx={{
-                            justifyContent: 'center',
-                            width: '100%',
-                            '&.Mui-selected': {
-                                backgroundColor: '#0056b3',
-                                color: '#ffffff',
-                            },
-                        }}
-                    >
-                        <ListItemIcon sx={{ justifyContent: 'center', color: activeItem === '/staff/dashboard' ? '#ffffff' : '#3f51b5' }}>
-                            <Dashboard />
-                        </ListItemIcon>
-                    </ListItem>
-                </Tooltip>
-
-                {/* Divider for separation */}
-                <Divider sx={{ width: '70%', my: 2 }} />
-
-                {/* Gross Management Icon */}
-                <Tooltip title="Gestion du Gross" placement="right">
-                    <ListItem
-                        button // Use this to treat ListItem as a button
-                        onClick={() => handleItemClick('/staff/gross')}
-                        selected={activeItem === '/staff/gross'}
-                        sx={{
-                            justifyContent: 'center',
-                            width: '100%',
-                            '&.Mui-selected': {
-                                backgroundColor: '#28a745',
-                                color: '#ffffff',
-                            },
-                        }}
-                    >
-                        <ListItemIcon sx={{ justifyContent: 'center', color: activeItem === '/staff/gross' ? '#ffffff' : '#3f51b5' }}>
-                            <AttachMoney />
-                        </ListItemIcon>
-                    </ListItem>
-                </Tooltip>
-            </List>
-        </Drawer>
+        <StyledDrawer variant="permanent" anchor="left">
+            <Box
+                display="flex"
+                flexDirection="column"
+                alignItems="center"
+                justifyContent="center" // Center content vertically
+                p={1}
+                height="100%"
+            >
+                <List>
+                    {menuItems.map((item, index) => (
+                        <React.Fragment key={item.title}>
+                            <Tooltip title={item.title} placement="right">
+                                <StyledListItemButton
+                                    onClick={() => handleItemClick(item.path)}
+                                    selected={activeItem === item.path}
+                                >
+                                    <ListItemIcon
+                                        sx={{
+                                            justifyContent: 'center',
+                                            color: activeItem === item.path ? '#ffffff' : '#3f51b5',
+                                        }}
+                                    >
+                                        {item.icon}
+                                    </ListItemIcon>
+                                </StyledListItemButton>
+                            </Tooltip>
+                            {/* Divider after each item except the last */}
+                            {index < menuItems.length - 1 && <Divider sx={{ width: '70%', my: 2 }} />}
+                        </React.Fragment>
+                    ))}
+                </List>
+            </Box>
+        </StyledDrawer>
     );
 };
 

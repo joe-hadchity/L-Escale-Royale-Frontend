@@ -22,11 +22,15 @@ import {
     ListItem,
     IconButton,
     Divider,
+    CircularProgress,
+    TextField
 } from '@mui/material';
 import { Money, CreditCard, MobileFriendly, Replay } from '@mui/icons-material';
 import { Delete, AddCircle, RemoveCircle } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
 import { useOrder } from '../../context/OrderContext';
+import { useNavigate } from 'react-router-dom';
+import Keyboard from 'react-simple-keyboard';
+import 'react-simple-keyboard/build/css/index.css';
 
 const Order = () => {
     const [categories, setCategories] = useState([]);
@@ -34,6 +38,7 @@ const Order = () => {
     const [cart, setCart] = useState([]);
     const [orderType, setOrderType] = useState('Dine In');
     const [tableNumber, setTableNumber] = useState('');
+    const [deliveryLocation, setDeliveryLocation] = useState('');
     const [paymentMethod, setPaymentMethod] = useState('');
     const [selectedCategory, setSelectedCategory] = useState(null);
     const [selectedItem, setSelectedItem] = useState(null);
@@ -46,7 +51,12 @@ const Order = () => {
     const [activeTab, setActiveTab] = useState('remove');
     const [error, setError] = useState('');
     const [selectedIngredientCategory, setSelectedIngredientCategory] = useState('');
+    const [isAccessAllowed, setIsAccessAllowed] = useState(true);
+    const [loading, setLoading] = useState(true);
+    const [keyboardVisible, setKeyboardVisible] = useState(false);
+    const [keyboardField, setKeyboardField] = useState('');
 
+    const [deliveryCharge, setDeliveryCharge] = useState('');
     const navigate = useNavigate();
     const tableNumbers = Array.from({ length: 20 }, (_, i) => i + 1);
     const { selectedOrder, setSelectedOrder } = useOrder();
@@ -58,7 +68,7 @@ const Order = () => {
             setOrderNumber(location.state.orderNumber);
         }
     }, [location.state]);
-    // Populate cart with selectedOrder items when component mounts
+
     useEffect(() => {
         if (selectedOrder && selectedOrder.Items) {
             const itemsToCart = selectedOrder.Items.map((item) => ({
@@ -74,19 +84,50 @@ const Order = () => {
             setOrderType(selectedOrder.Type);
             setTableNumber(selectedOrder.TableNumber);
         } else {
-            // Clear the cart if no order is selected
             setCart([]);
         }
     }, [selectedOrder]);
 
     useEffect(() => {
+        const checkLatestGross = async () => {
+            try {
+                setLoading(true);
+                const response = await axios.get(`${process.env.REACT_APP_API_URL}/Gross/GetLatestGross`);
+                const latestGross = response.data;
+
+                if (latestGross.Status === "Closed") {
+                    toast.error("Access restricted: The latest gross is closed.", {
+                        position: "bottom-center",
+                        autoClose: 5000,
+                        hideProgressBar: false,
+                        closeOnClick: true,
+                        pauseOnHover: true,
+                        draggable: true,
+                    });
+                    setIsAccessAllowed(false);
+                } else {
+                    setIsAccessAllowed(true);
+                }
+            } catch (err) {
+                console.error('Error checking latest gross:', err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        checkLatestGross();
+    }, []);
+
+    useEffect(() => {
         const fetchCategories = async () => {
             try {
+                setLoading(true);
                 const response = await axios.get(`${process.env.REACT_APP_API_URL}/Category/GetAllCategories`);
                 setCategories(response.data);
                 setSelectedCategory(response.data[0]?.Name);
             } catch (err) {
                 console.error('Error fetching categories:', err);
+            } finally {
+                setLoading(false);
             }
         };
         fetchCategories();
@@ -97,12 +138,15 @@ const Order = () => {
 
         const fetchItems = async () => {
             try {
+                setLoading(true);
                 const response = await axios.get(`${process.env.REACT_APP_API_URL}/Item/GetItemsByCategory/${selectedCategory}`);
                 setItems(response.data.length === 0 ? [] : response.data);
                 setError(response.data.length === 0 ? 'No items found' : '');
             } catch (err) {
                 console.error('Error fetching items:', err);
                 setError('Error fetching items');
+            } finally {
+                setLoading(false);
             }
         };
         fetchItems();
@@ -127,13 +171,32 @@ const Order = () => {
         fetchIngredients();
     }, []);
 
+    if (!isAccessAllowed) {
+        return (
+            <Container>
+                <Typography variant="h6" color="error" sx={{ textAlign: 'center', marginTop: 5 }}>
+                    Access restricted: The latest gross is closed.
+                </Typography>
+                <ToastContainer />
+            </Container>
+        );
+    }
+
     const handleItemClick = (item) => {
         setSelectedItem({ ...item, quantity: 1 });
-        setRemovals([]); // Reset removals for each item
-        setAddOns([]); // Reset add-ons for each item
+        setRemovals([]);
+        setAddOns([]);
         setOpenDialog(true);
     };
-
+    const handleOutsideClick = () => {
+        setKeyboardVisible(false);
+    }; const handleKeyboardChange = (input) => {
+        if (keyboardField === 'location') {
+            setDeliveryLocation(input);
+        } else if (keyboardField === 'charge') {
+            setDeliveryCharge(input);
+        }
+    };
     const handleSaveItem = () => {
         const updatedItem = {
             ...selectedItem,
@@ -156,38 +219,7 @@ const Order = () => {
             setCart([...cart, updatedItem]);
         }
 
-        console.log('Item saved to cart:', updatedItem);
         setOpenDialog(false);
-    };
-
-    const handleAddItemToOrder = async (item) => {
-        try {
-            const newItem = {
-                Name: item.Name,
-                Quantity: item.quantity,
-                TypeItem: orderType === 'Dine In' ? 'Dine In' : 'TakeAway',
-                PriceDineIn: item.price || 0,
-                PriceDelivery: item.pricedel || 0,
-                AddOns: item.addOns || [],
-                Removals: item.removals || [],
-            };
-
-            // Send a PUT request to add the item to the existing order
-            await axios.put(
-                `${process.env.REACT_APP_API_URL}/Order/AddAnItem/${orderNumber}`,
-                newItem
-            );
-
-            console.log('Item added to order:', newItem);
-        } catch (error) {
-            console.error('Error adding item to order:', error);
-        }
-    };
-
-    const handleIngredientCategoryChange = (category) => {
-        setSelectedIngredientCategory(category);
-        const selectedCat = ingredientsCategories.find((cat) => cat.categoryName === category);
-        setAvailableIngredients(selectedCat ? selectedCat.ingredients : []);
     };
 
     const handleOrderTypeChange = (event, newType) => setOrderType(newType);
@@ -208,14 +240,12 @@ const Order = () => {
         setRemovals((prev) =>
             prev.includes(ingredient) ? prev.filter((rem) => rem !== ingredient) : [...prev, ingredient]
         );
-        console.log('Removals:', removals);
     };
 
     const toggleAddIngredient = (ingredient) => {
         setAddOns((prev) =>
             prev.includes(ingredient) ? prev.filter((add) => add !== ingredient) : [...prev, ingredient]
         );
-        console.log('Add-ons:', addOns);
     };
 
     const calculateItemPrice = (item) => (orderType === 'Dine In' ? item.price : item.pricedel);
@@ -229,95 +259,47 @@ const Order = () => {
                 closeOnClick: true,
                 pauseOnHover: true,
                 draggable: true,
-                progress: undefined,
             });
             return;
         }
         setOpenPaymentDialog(true);
     };
-    const submitOrder = async (status) => {
-        // Construct the validatedItems payload for the order
-        const validatedItems = cart
-            .filter((item) => item.Name && item.CategoryName) // Ensure only items with valid names and categories are included
-            .map((item) => ({
-                CategoryName: item.CategoryName || 'Unknown Category',
-                Name: item.Name || 'Unknown Item',
-                Description: item.Description || 'No description',
-                PriceDineIn: item.price || 0,
-                PriceDelivery: item.pricedel || 0,
-                Quantity: item.quantity || 1,
-                TypeItem: orderType === 'Sur place' ? 'Dine In' : 'TakeAway',
-                Rating: item.Rating || 0,
-                Ingredients: item.Ingredients ? item.Ingredients.map((ing) => ing.Name) : [],
-                Removals: item.removals ? item.removals.map((rem) => ({ Name: rem.Name, Price: rem.Price || 0 })) : [],
-                AddOns: item.addOns ? item.addOns.map((addOn) => ({ Name: addOn.Name, Price: addOn.Price || 0 })) : [],
-            }));
-    
-        // Make sure there are valid items to submit
-        if (validatedItems.length === 0) {
-            console.warn('No valid items to submit in the order.');
-            return; // Exit the function early if there are no valid items
-        }
-    
+
+    const handleDeliveryLocationChange = (value) => {
+        setDeliveryLocation(value);
+    };
+
+    const handlePaymentMethodChange = async (method) => {
         try {
-            if (orderNumber) {
-                // If `orderNumber` exists, update the existing order by adding new items
-                const response = await axios.put(
-                    `${process.env.REACT_APP_API_URL}/Order/AddAnItem/${orderNumber}`,
-                    { Items: validatedItems } // Ensure the payload has only the `Items` key
-                );
-                console.log('Order updated successfully:', response.data);
-            } else {
-                // Create the order payload for new orders
-                const orderPayload = {
-                    Type: orderType || 'Sur place',
-                    Status: status || 'Pending',
-                    Items: validatedItems,
-                    TableNumber: orderType === 'Sur place' ? (tableNumber || '1') : null,
-                    DeleiveryCharge: orderType === 'À emporter' ? 2.5 : 0,
-                    Location: orderType === 'À emporter' ? '123 Main St, Cityville' : 'Restaurant',
-                };
-    
-                console.log('Order to be submitted:', JSON.stringify(orderPayload, null, 2));
-    
-                // Create a new order if `orderNumber` is not defined
-                const response = await axios.post(
-                    `${process.env.REACT_APP_API_URL}/Order/CreateOrder`,
-                    orderPayload
-                );
-                console.log('Order created successfully:', response.data);
-                setOrderNumber(response.data.OrderNumber); // Set the new order number
-            }
-    
-            // Clear cart, table number, and payment method after submission
-            setCart([]);
-            setTableNumber('');
-            setPaymentMethod('');
-        } catch (err) {
-            console.error('Error creating/updating order:', err);
-            if (err.response) {
-                console.error('Response data:', err.response.data);
-                console.error('Response status:', err.response.status);
-            }
+            setPaymentMethod(method);
+            const status = method === 'Pay Later' ? 'Pending' : 'Done';
+
+            // Construct order payload and submit order based on status
+            // Add the logic to submit order here if needed
+
+            setOpenPaymentDialog(false);
+        } catch (error) {
+            console.error('Error with payment method:', error);
         }
     };
-    
-    
-    
 
-    const handlePaymentMethodChange = (method) => {
-        setPaymentMethod(method);
-        const status = method === 'Pay Later' ? 'Pending' : 'Done';
-        submitOrder(status);
-        setOpenPaymentDialog(false);
+    const handleIngredientCategoryChange = (category) => {
+        setSelectedIngredientCategory(category);
+        const selectedCat = ingredientsCategories.find((cat) => cat.categoryName === category);
+        setAvailableIngredients(selectedCat ? selectedCat.ingredients : []);
     };
 
     const removeFromCart = (itemToRemove) => setCart(cart.filter(cartItem => cartItem._id !== itemToRemove._id));
 
     return (
         <Container maxWidth={false} sx={{ padding: 0, margin: 0, display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
+        {loading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+                <CircularProgress />
+            </Box>
+        ) : (
             <Grid container spacing={1} sx={{ height: '100vh', overflow: 'hidden' }}>
-                {/* Slimmer Categories Section */}
+                {/* Categories Section */}
                 <Grid item xs={1.5} sx={{ backgroundColor: '#f0f0f0', padding: 1, boxShadow: 3, borderRight: '1px solid #e0e0e0' }}>
                     <Typography variant="h6" sx={{ mb: 1, fontWeight: 'bold', textAlign: 'center' }}>
                         Categories
@@ -340,17 +322,20 @@ const Order = () => {
                 {/* Items Section */}
                 <Grid item xs={6.5} sx={{ padding: 1 }}>
                     <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1, mb: 1 }}>
-                        <ToggleButtonGroup value={orderType} exclusive onChange={handleOrderTypeChange}>
+                        <ToggleButtonGroup value={orderType} exclusive onChange={(e, newType) => setOrderType(newType)}>
                             <ToggleButton value="Dine In" sx={{ fontWeight: 'bold' }}>
                                 Dine In
                             </ToggleButton>
                             <ToggleButton value="Takeaway" sx={{ fontWeight: 'bold' }}>
                                 Takeaway
                             </ToggleButton>
+                            <ToggleButton value="Delivery" sx={{ fontWeight: 'bold' }}>
+                                Delivery
+                            </ToggleButton>
                         </ToggleButtonGroup>
                     </Box>
 
-                    {/* Table Number Selection */}
+                    {/* Table Number Selection for Dine In */}
                     {orderType === 'Dine In' && (
                         <Box sx={{ display: 'flex', gap: 1, overflowX: 'auto', mb: 2, padding: '4px', justifyContent: 'center' }}>
                             {tableNumbers.map((num) => (
@@ -366,10 +351,60 @@ const Order = () => {
                         </Box>
                     )}
 
+                    {/* Delivery Location Input */}
+                    {orderType === 'Delivery' && (
+                        <Box sx={{ mb: 2 }}>
+                            <TextField
+                                label="Delivery Location"
+                                fullWidth
+                                variant="outlined"
+                                value={deliveryLocation}
+                                onFocus={() => setKeyboardVisible(true)}
+                                onChange={(e) => handleDeliveryLocationChange(e.target.value)}
+                            />
+                           {keyboardVisible && (
+                <Box
+                    sx={{
+                        position: 'fixed',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        height: '100%',
+                        zIndex: 1500,
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    }}
+                    onClick={handleOutsideClick}
+                >
+                    <Box
+                        sx={{
+                            position: 'absolute',
+                            bottom: 0,
+                            width: '100%',
+                            backgroundColor: '#fff',
+                            padding: '20px',
+                            zIndex: 1600,
+                        }}
+                    >
+                        <Keyboard
+                            onChange={(value) => handleKeyboardChange(value)}
+                            onKeyPress={(button) => button === '{enter}' && setKeyboardVisible(false)}
+                            theme="hg-theme-default"
+                            layoutName="default"
+                        />
+                    </Box>
+                </Box>
+            )}
+                        </Box>
+                    )}
+
                     <Typography variant="h6" sx={{ mb: 1, fontWeight: 'bold' }}>
                         Select an Item
                     </Typography>
-                    {error ? (
+                    {loading ? (
+                        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
+                            <CircularProgress />
+                        </Box>
+                    ) : error ? (
                         <Typography variant="body1" color="error" textAlign="center">
                             {error}
                         </Typography>
@@ -423,7 +458,7 @@ const Order = () => {
                         <Box sx={{ maxHeight: '65vh', overflowY: 'auto', padding: '8px' }}>
                             <List dense>
                                 {cart.map((cartItem, index) => (
-                                    <React.Fragment key={`cart-${cartItem._id}-${index}`}>
+                                    <React.Fragment key={`cart-item-${cartItem._id || index}`}>
                                         <ListItem
                                             secondaryAction={
                                                 <IconButton edge="end" aria-label="delete" onClick={() => removeFromCart(cartItem)}>
@@ -439,18 +474,18 @@ const Order = () => {
                                                 <Typography variant="body2">
                                                     {orderType === 'Dine In' ? cartItem.price : cartItem.pricedel} CFA x {cartItem.quantity}
                                                 </Typography>
-                                                
+
                                                 {/* Display Removals */}
                                                 {cartItem.removals && cartItem.removals.length > 0 && (
                                                     <Typography variant="body2" color="error">
-                                                        Removals: {cartItem.removals.map(rem => rem.Name).join(', ')}
+                                                        Removals: {cartItem.removals.map((rem) => rem.Name).join(', ')}
                                                     </Typography>
                                                 )}
 
                                                 {/* Display Add-ons */}
                                                 {cartItem.addOns && cartItem.addOns.length > 0 && (
                                                     <Typography variant="body2" color="primary">
-                                                        Add-ons: {cartItem.addOns.map(add => add.Name).join(', ')}
+                                                        Add-ons: {cartItem.addOns.map((add) => add.Name).join(', ')}
                                                     </Typography>
                                                 )}
                                             </Box>
@@ -491,7 +526,7 @@ const Order = () => {
                     )}
                 </Grid>
             </Grid>
-
+        )}
             {/* Item Editing Modal */}
             <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="md">
                 <DialogTitle>Edit {selectedItem?.Name}</DialogTitle>
