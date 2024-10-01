@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import { useLocation } from 'react-router-dom';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-
 import {
     Grid,
     Typography,
@@ -24,7 +25,6 @@ import {
 } from '@mui/material';
 import { Money, CreditCard, MobileFriendly, Replay } from '@mui/icons-material';
 import { Delete, AddCircle, RemoveCircle } from '@mui/icons-material';
-import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { useOrder } from '../../context/OrderContext';
 
@@ -35,26 +35,29 @@ const Order = () => {
     const [orderType, setOrderType] = useState('Dine In');
     const [tableNumber, setTableNumber] = useState('');
     const [paymentMethod, setPaymentMethod] = useState('');
-    const [orderNumber] = useState(1001); // Example order number
-
     const [selectedCategory, setSelectedCategory] = useState(null);
     const [selectedItem, setSelectedItem] = useState(null);
     const [openDialog, setOpenDialog] = useState(false);
     const [openPaymentDialog, setOpenPaymentDialog] = useState(false);
-
     const [ingredientsCategories, setIngredientsCategories] = useState([]);
     const [availableIngredients, setAvailableIngredients] = useState([]);
     const [removals, setRemovals] = useState([]);
     const [addOns, setAddOns] = useState([]);
-    const [selectedIngredientCategory, setSelectedIngredientCategory] = useState('');
     const [activeTab, setActiveTab] = useState('remove');
     const [error, setError] = useState('');
+    const [selectedIngredientCategory, setSelectedIngredientCategory] = useState('');
 
     const navigate = useNavigate();
     const tableNumbers = Array.from({ length: 20 }, (_, i) => i + 1);
+    const { selectedOrder, setSelectedOrder } = useOrder();
+    const location = useLocation();
+    const [orderNumber, setOrderNumber] = useState(null);
 
-    const { selectedOrder } = useOrder(); // Get selected order from context
-
+    useEffect(() => {
+        if (location.state && location.state.orderNumber) {
+            setOrderNumber(location.state.orderNumber);
+        }
+    }, [location.state]);
     // Populate cart with selectedOrder items when component mounts
     useEffect(() => {
         if (selectedOrder && selectedOrder.Items) {
@@ -70,6 +73,9 @@ const Order = () => {
             setCart(itemsToCart);
             setOrderType(selectedOrder.Type);
             setTableNumber(selectedOrder.TableNumber);
+        } else {
+            // Clear the cart if no order is selected
+            setCart([]);
         }
     }, [selectedOrder]);
 
@@ -154,6 +160,30 @@ const Order = () => {
         setOpenDialog(false);
     };
 
+    const handleAddItemToOrder = async (item) => {
+        try {
+            const newItem = {
+                Name: item.Name,
+                Quantity: item.quantity,
+                TypeItem: orderType === 'Dine In' ? 'Dine In' : 'TakeAway',
+                PriceDineIn: item.price || 0,
+                PriceDelivery: item.pricedel || 0,
+                AddOns: item.addOns || [],
+                Removals: item.removals || [],
+            };
+
+            // Send a PUT request to add the item to the existing order
+            await axios.put(
+                `${process.env.REACT_APP_API_URL}/Order/AddAnItem/${orderNumber}`,
+                newItem
+            );
+
+            console.log('Item added to order:', newItem);
+        } catch (error) {
+            console.error('Error adding item to order:', error);
+        }
+    };
+
     const handleIngredientCategoryChange = (category) => {
         setSelectedIngredientCategory(category);
         const selectedCat = ingredientsCategories.find((cat) => cat.categoryName === category);
@@ -203,57 +233,81 @@ const Order = () => {
             });
             return;
         }
-    
         setOpenPaymentDialog(true);
     };
-    
     const submitOrder = async (status) => {
-        const validatedItems = cart.map((item) => ({
-            CategoryName: item.CategoryName || 'Unknown Category',
-            Name: item.Name || 'Unknown Item',
-            Description: item.Description || 'No description',
-            PriceDineIn: item.price || 0,
-            PriceDelivery: item.pricedel || 0,
-            Quantity: item.quantity || 1,
-            Rating: item.Rating || 0,
-            Ingredients: item.Ingredients ? item.Ingredients.map((ing) => ing.Name) : [],
-            Removals: item.removals ? item.removals.map((rem) => rem.Name) : [],
-            AddOns: item.addOns ? item.addOns.map((addOn) => ({ Name: addOn.Name, Price: addOn.Price || 0 })) : [],
-        }));
+        // Construct the validatedItems payload for the order
+        const validatedItems = cart
+            .filter((item) => item.Name && item.CategoryName) // Ensure only items with valid names and categories are included
+            .map((item) => ({
+                CategoryName: item.CategoryName || 'Unknown Category',
+                Name: item.Name || 'Unknown Item',
+                Description: item.Description || 'No description',
+                PriceDineIn: item.price || 0,
+                PriceDelivery: item.pricedel || 0,
+                Quantity: item.quantity || 1,
+                TypeItem: orderType === 'Sur place' ? 'Dine In' : 'TakeAway',
+                Rating: item.Rating || 0,
+                Ingredients: item.Ingredients ? item.Ingredients.map((ing) => ing.Name) : [],
+                Removals: item.removals ? item.removals.map((rem) => ({ Name: rem.Name, Price: rem.Price || 0 })) : [],
+                AddOns: item.addOns ? item.addOns.map((addOn) => ({ Name: addOn.Name, Price: addOn.Price || 0 })) : [],
+            }));
     
-        const orderToSubmit = {
-            Type: orderType || 'Dine In',
-            Status: status, // Use the provided status
-            Items: validatedItems,
-            TableNumber: orderType === 'Dine In' ? (tableNumber || '1') : null,
-            DeliveryCharge: orderType === 'Takeaway' ? 2.5 : 0,
-            Location: orderType === 'Takeaway' ? '123 Main St, Cityville' : 'Restaurant',
-        };
-    
-        console.log('Order to be submitted:', JSON.stringify(orderToSubmit, null, 2));
+        // Make sure there are valid items to submit
+        if (validatedItems.length === 0) {
+            console.warn('No valid items to submit in the order.');
+            return; // Exit the function early if there are no valid items
+        }
     
         try {
-            const response = await axios.post(`${process.env.REACT_APP_API_URL}/Order/CreateOrder`, orderToSubmit);
-            console.log('Order created successfully:', response.data);
+            if (orderNumber) {
+                // If `orderNumber` exists, update the existing order by adding new items
+                const response = await axios.put(
+                    `${process.env.REACT_APP_API_URL}/Order/AddAnItem/${orderNumber}`,
+                    { Items: validatedItems } // Ensure the payload has only the `Items` key
+                );
+                console.log('Order updated successfully:', response.data);
+            } else {
+                // Create the order payload for new orders
+                const orderPayload = {
+                    Type: orderType || 'Sur place',
+                    Status: status || 'Pending',
+                    Items: validatedItems,
+                    TableNumber: orderType === 'Sur place' ? (tableNumber || '1') : null,
+                    DeleiveryCharge: orderType === 'À emporter' ? 2.5 : 0,
+                    Location: orderType === 'À emporter' ? '123 Main St, Cityville' : 'Restaurant',
+                };
+    
+                console.log('Order to be submitted:', JSON.stringify(orderPayload, null, 2));
+    
+                // Create a new order if `orderNumber` is not defined
+                const response = await axios.post(
+                    `${process.env.REACT_APP_API_URL}/Order/CreateOrder`,
+                    orderPayload
+                );
+                console.log('Order created successfully:', response.data);
+                setOrderNumber(response.data.OrderNumber); // Set the new order number
+            }
+    
+            // Clear cart, table number, and payment method after submission
             setCart([]);
             setTableNumber('');
             setPaymentMethod('');
         } catch (err) {
-            console.error('Error creating order:', err);
+            console.error('Error creating/updating order:', err);
             if (err.response) {
                 console.error('Response data:', err.response.data);
                 console.error('Response status:', err.response.status);
-                console.error('Response headers:', err.response.headers);
             }
         }
     };
+    
+    
+    
 
     const handlePaymentMethodChange = (method) => {
         setPaymentMethod(method);
-    
-        // Adjust the status based on the payment method before submitting
         const status = method === 'Pay Later' ? 'Pending' : 'Done';
-    
         submitOrder(status);
         setOpenPaymentDialog(false);
     };
@@ -282,10 +336,9 @@ const Order = () => {
                         ))}
                     </Box>
                 </Grid>
-    
-                {/* Items Section with 5 Columns */}
+
+                {/* Items Section */}
                 <Grid item xs={6.5} sx={{ padding: 1 }}>
-                   
                     <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1, mb: 1 }}>
                         <ToggleButtonGroup value={orderType} exclusive onChange={handleOrderTypeChange}>
                             <ToggleButton value="Dine In" sx={{ fontWeight: 'bold' }}>
@@ -296,7 +349,7 @@ const Order = () => {
                             </ToggleButton>
                         </ToggleButtonGroup>
                     </Box>
-    
+
                     {/* Table Number Selection */}
                     {orderType === 'Dine In' && (
                         <Box sx={{ display: 'flex', gap: 1, overflowX: 'auto', mb: 2, padding: '4px', justifyContent: 'center' }}>
@@ -312,7 +365,7 @@ const Order = () => {
                             ))}
                         </Box>
                     )}
-    
+
                     <Typography variant="h6" sx={{ mb: 1, fontWeight: 'bold' }}>
                         Select an Item
                     </Typography>
@@ -343,13 +396,13 @@ const Order = () => {
                         </Grid>
                     )}
                 </Grid>
-    
+
                 {/* Cart Section */}
                 <Grid item xs={4} sx={{ backgroundColor: '#f0f0f0', padding: 2, boxShadow: 3, borderLeft: '1px solid #e0e0e0' }}>
                     <Typography variant="h6" sx={{ mb: 1, fontWeight: 'bold', textAlign: 'center' }}>
                         Cart
                     </Typography>
-                    
+
                     {/* Order Information */}
                     <Box sx={{ marginBottom: 2 }}>
                         <Typography variant="body1" sx={{ fontWeight: 'bold', textAlign: 'center', fontSize: '1rem', mb: 1 }}>
@@ -361,7 +414,7 @@ const Order = () => {
                             </Typography>
                         )}
                     </Box>
-    
+
                     {cart.length === 0 ? (
                         <Typography color="textSecondary" textAlign="center">
                             Your cart is empty
@@ -393,7 +446,7 @@ const Order = () => {
                                                         Removals: {cartItem.removals.map(rem => rem.Name).join(', ')}
                                                     </Typography>
                                                 )}
-    
+
                                                 {/* Display Add-ons */}
                                                 {cartItem.addOns && cartItem.addOns.length > 0 && (
                                                     <Typography variant="body2" color="primary">
@@ -401,7 +454,7 @@ const Order = () => {
                                                     </Typography>
                                                 )}
                                             </Box>
-    
+
                                             {/* Quantity Controls */}
                                             <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
                                                 <IconButton
@@ -438,7 +491,7 @@ const Order = () => {
                     )}
                 </Grid>
             </Grid>
-    
+
             {/* Item Editing Modal */}
             <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="md">
                 <DialogTitle>Edit {selectedItem?.Name}</DialogTitle>
@@ -456,7 +509,7 @@ const Order = () => {
                             Add
                         </ToggleButton>
                     </ToggleButtonGroup>
-    
+
                     {activeTab === 'remove' && (
                         <Box>
                             <Typography variant="h6" sx={{ mt: 2, fontWeight: 'bold' }}>
@@ -475,7 +528,7 @@ const Order = () => {
                             </Box>
                         </Box>
                     )}
-    
+
                     {activeTab === 'add' && (
                         <Box>
                             <Typography variant="h6" sx={{ mt: 2, fontWeight: 'bold' }}>
@@ -516,7 +569,7 @@ const Order = () => {
                     </Button>
                 </DialogActions>
             </Dialog>
-    
+
             {/* Payment Selection Modal */}
             <Dialog open={openPaymentDialog} onClose={() => setOpenPaymentDialog(false)} maxWidth="sm">
                 <DialogTitle sx={{ fontWeight: 'bold', textAlign: 'center' }}>Select Payment Method</DialogTitle>
@@ -531,7 +584,7 @@ const Order = () => {
                         >
                             Cash
                         </Button>
-    
+
                         <Button
                             variant="contained"
                             color="secondary"
@@ -541,7 +594,7 @@ const Order = () => {
                         >
                             Card
                         </Button>
-    
+
                         <Button
                             variant="contained"
                             color="success"
@@ -551,7 +604,7 @@ const Order = () => {
                         >
                             Airtel
                         </Button>
-    
+
                         <Button
                             variant="contained"
                             color="warning"
@@ -571,7 +624,6 @@ const Order = () => {
             </Dialog>
         </Container>
     );
-    
 };
 
 export default Order;

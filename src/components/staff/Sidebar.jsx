@@ -57,29 +57,7 @@ const Sidebar = () => {
                 {/* Divider for separation */}
                 <Divider sx={{ width: '70%', my: 2 }} />
 
-                {/* Order Icon */}
-                <Tooltip title="Order" placement="right">
-                    <ListItem
-                        button // Use this to treat ListItem as a button
-                        onClick={() => handleItemClick('/staff/order')}
-                        selected={activeItem === '/staff/order'}
-                        sx={{
-                            justifyContent: 'center',
-                            width: '100%',
-                            '&.Mui-selected': {
-                                backgroundColor: '#0056b3',
-                                color: '#ffffff',
-                            },
-                        }}
-                    >
-                        <ListItemIcon sx={{ justifyContent: 'center', color: activeItem === '/staff/order' ? '#ffffff' : '#3f51b5' }}>
-                            <RestaurantMenu />
-                        </ListItemIcon>
-                    </ListItem>
-                </Tooltip>
-
-                {/* Divider for separation */}
-                <Divider sx={{ width: '70%', my: 2 }} />
+               
 
                 {/* Dashboard Icon */}
                 <Tooltip title="Dashboard" placement="right">
