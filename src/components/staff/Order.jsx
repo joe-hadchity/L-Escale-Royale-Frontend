@@ -251,40 +251,30 @@ const Order = () => {
             
             // Determine status based on payment method
             const status = method === 'Pay Later' ? 'Pending' : 'Done';
-            
-            // Calculate the total price based on the order type
-            const totalPrice = cart.reduce((sum, item) => {
-                const itemPrice = orderType === 'Dine In' ? item.price : item.pricedel;
-                return sum + itemPrice * item.quantity;
-            }, 0);
+        
     
             // Construct the order payload
             const payload = {
-                Status: status, // Set status based on payment method
-                TotalPrice: totalPrice, // Include calculated total price
+                Status: status, // The status is dynamically set based on your logic (e.g., 'Pending', 'Done')
                 Items: cart.map(item => ({
-                    CategoryName: selectedCategory,
-                    Name: item.Name,
-                    Description: item.Description || '',
-                    PriceDineIn: item.price || 0,
-                    PriceDelivery: item.pricedel || 0,
-                    Quantity: item.quantity || 1,
-                    TypeItem: orderType === 'Dine In' ? 'Dine In' : 'Takeaway', // Correct TypeItem
-                    Ingredients: item.Ingredients || [],
-                    Removals: item.removals || [],
-                    AddOns: item.addOns || [],
-                    ItemPrice: (orderType === 'Dine In' ? item.price : item.pricedel) * item.quantity,
+                  CategoryName: selectedCategory, // Category is based on the selected category for the item
+                  Name: item.Name, // Name of the item
+                  Description: item.Description || '', // Item description if available, otherwise an empty string
+                  PriceDineIn: item.price || 0, // Price for Dine-In; default is 0 if not provided
+                  PriceDelivery: item.pricedel || 0, // Price for Delivery; default is 0 if not provided
+                  Quantity: item.quantity || 1, // Quantity of the item ordered; default is 1
+                  TypeItem: orderType === 'Dine In' ? 'Dine In' : 'TakeAway', // Type of item, either 'Dine In' or 'Takeaway'
+                  Ingredients: item.Ingredients || [], // Ingredients associated with the item, default to empty array if none
+                  Removals: item.removals || [], // Items removed from the order (if any), default to empty array
+                  AddOns: item.addOns || [], // Add-ons to the item, default to empty array
+                  ItemPrice: (orderType === 'Dine In' ? item.price : item.pricedel) * item.quantity, // Item price based on order type and quantity
                 })),
-                TableNumber: orderType === 'Dine In' ? tableNumber : "N/A",
-                DeliveryCharge: orderType === 'Delivery' ? deliveryCharge : 0, // Fix spelling to 'DeliveryCharge'
-                // Location: orderType === 'Delivery' ? deliveryLocation : "N/A",
-                // DateOfOrder: new Date().toISOString(), // Set current date and time
-                // Created_by: "N/A", // Replace with the actual user or "N/A"
-            };
-            
-    
+                TableNumber: orderType === 'Dine In' ? tableNumber : '0', // Table number for dine-in orders; N/A for takeaway or delivery
+                DeliveryCharge: orderType === 'Delivery' ? deliveryCharge : 0, // Delivery charge 
+              };
+              
+           
             console.log("Order Payload:", payload);
-    
             // If orderNumber exists, update the order status
             if (orderNumber) {
                 // Make a PUT request to update the existing order status

@@ -58,7 +58,7 @@ const Dashboard = () => {
 
     const handleTakeawayClick = () => {
         const takeawayOrder = {
-            Type: 'Takeaway',
+            Type: 'TakeAway',
             Items: [],
         };
         setSelectedOrder(takeawayOrder);
