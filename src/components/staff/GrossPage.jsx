@@ -17,6 +17,7 @@ import {
     ListItemText,
     Card,
     CardContent,
+    Alert,
 } from '@mui/material';
 import axios from 'axios';
 
@@ -28,6 +29,7 @@ const GrossPage = () => {
     const [openingBalance, setOpeningBalance] = useState('');
     const [reportData, setReportData] = useState(null);
     const [reportLoading, setReportLoading] = useState(false);
+    const [error, setError] = useState(null);
 
     useEffect(() => {
         const fetchGrossDetails = async () => {
@@ -38,6 +40,7 @@ const GrossPage = () => {
                 setGrossTotal(latestGross.TotalGross || 0);
             } catch (error) {
                 console.error('Error fetching Gross details:', error);
+                setError('Failed to fetch Gross details.');
             } finally {
                 setLoading(false);
             }
@@ -53,6 +56,7 @@ const GrossPage = () => {
             setOpenDialog(false);
         } catch (error) {
             console.error('Error creating a new Gross:', error);
+            setError('Failed to create a new Gross. Please try again.');
         }
     };
 
@@ -69,22 +73,32 @@ const GrossPage = () => {
             }
         } catch (error) {
             console.error('Error closing the Gross:', error);
+            setError('Failed to close the Gross. Please try again.');
         }
     };
 
     const fetchReport = async () => {
         setReportLoading(true);
         try {
+            console.log('Attempting to create report...');
+    
             // Create the report using the backend endpoint
             const response = await axios.post(`${process.env.REACT_APP_API_URL}/Report/CreateReport`);
+            
+            console.log('Report created successfully. Response:', response);
+    
             setReportData(response.data);
+    
+            console.log('Report data set:', response.data);
         } catch (error) {
             console.error('Error fetching report data:', error);
+            setError('Failed to fetch report data. Please try again later.');
         } finally {
+            console.log('Finished fetching report.');
             setReportLoading(false);
         }
     };
-
+    
     const handleKeyPress = (value) => {
         if (value === 'clear') {
             setOpeningBalance('');
@@ -104,6 +118,13 @@ const GrossPage = () => {
             <Typography variant="h4" sx={{ mb: 4, fontWeight: 'bold' }}>
                 Gestion du Gross
             </Typography>
+
+            {/* Display error if exists */}
+            {error && (
+                <Alert severity="error" onClose={() => setError(null)} sx={{ mb: 4 }}>
+                    {error}
+                </Alert>
+            )}
 
             <Paper elevation={3} sx={{ p: 3, borderRadius: '10px', mb: 4 }}>
                 {loading ? (
@@ -209,7 +230,7 @@ const GrossPage = () => {
                 </Paper>
             )}
 
-            <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="xs">
+            <Dialog open={openDialog} onClose={() => { setOpenDialog(false); setError(null); }} maxWidth="xs">
                 <DialogTitle>Ajouter un Fonds de Caisse</DialogTitle>
                 <DialogContent>
                     <Box
@@ -261,7 +282,7 @@ const GrossPage = () => {
                     </Grid>
                 </DialogContent>
                 <DialogActions>
-                    <Button onClick={() => setOpenDialog(false)} color="secondary">
+                    <Button onClick={() => { setOpenDialog(false); setError(null); }} color="secondary">
                         Annuler
                     </Button>
                     <Button onClick={handleCreateGross} color="primary" variant="contained">

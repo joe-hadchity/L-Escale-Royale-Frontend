@@ -3,17 +3,15 @@ import {
     Container,
     Typography,
     Grid,
-    Card,
-    CardContent,
-    Button,
-    Divider,
     Paper,
-    List,
-    ListItem,
-    ListItemText,
+    Button,
     Box,
+    Stack,
 } from '@mui/material';
 import AddShoppingCartIcon from '@mui/icons-material/AddShoppingCart';
+import DeliveryDiningIcon from '@mui/icons-material/DeliveryDining'; // Import a delivery icon
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import PaymentIcon from '@mui/icons-material/Payment';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useOrder } from '../../context/OrderContext';
@@ -49,7 +47,7 @@ const Dashboard = () => {
             navigate('/staff/order', { state: { orderNumber: existingOrder.OrderNumber } });
         } else {
             const newOrder = {
-                Type: 'Sur place',
+                Type: 'Dine In',
                 TableNumber: tableNumber.toString(),
                 Items: [],
             };
@@ -58,18 +56,43 @@ const Dashboard = () => {
         }
     };
 
+    const handleTakeawayClick = () => {
+        const takeawayOrder = {
+            Type: 'Takeaway',
+            Items: [],
+        };
+        setSelectedOrder(takeawayOrder);
+        navigate('/staff/order');
+    };
+
+    // New handler for "Delivery"
+    const handleDeliveryClick = () => {
+        const deliveryOrder = {
+            Type: 'Delivery',
+            Items: [],
+        };
+        setSelectedOrder(deliveryOrder);
+        navigate('/staff/order');
+    };
+
     const handleOrderClick = (order) => {
         setSelectedOrder(order);
         navigate('/staff/order', { state: { orderNumber: order.OrderNumber } });
     };
 
-    const handleTakeawayClick = () => {
-        const takeawayOrder = {
-            Type: 'À emporter',
-            Items: [],
-        };
-        setSelectedOrder(takeawayOrder);
-        navigate('/staff/order');
+    const handlePayLaterClick = async (order) => {
+        try {
+            await axios.put(`${process.env.REACT_APP_API_URL}/Order/UpdateOrderByOrderNumber/${order.OrderNumber}`, {
+                ...order,
+                Status: 'Pay Later',
+            });
+
+            setPendingOrders(prevOrders =>
+                prevOrders.map(o => o.OrderNumber === order.OrderNumber ? { ...o, Status: 'Pay Later' } : o)
+            );
+        } catch (error) {
+            console.error('Erreur lors de la mise à jour de la commande:', error);
+        }
     };
 
     const isTableOccupied = (tableNumber) => {
@@ -77,54 +100,61 @@ const Dashboard = () => {
     };
 
     return (
-        <Container maxWidth="xl" sx={{ height: '95vh', padding: 2, overflow: 'hidden', backgroundColor: '#f4f4f4' }}>
-            <Typography variant="h4" sx={{ mb: 2, textAlign: 'center', fontWeight: 'bold' }}>
+        <Container maxWidth="xl" sx={{ height: '95vh', padding: 2, overflow: 'hidden', backgroundColor: '#f9f9f9' }}>
+            <Typography variant="h4" sx={{ mb: 4, textAlign: 'center', fontWeight: 'bold', color: '#333' }}>
                 Tableau de bord - Statut des tables & Commandes en attente
             </Typography>
 
-            <Grid container spacing={2} sx={{ height: 'calc(100% - 64px)' }}>
+            <Grid container spacing={3} sx={{ height: 'calc(100% - 64px)' }}>
                 {/* Table Status Section */}
                 <Grid item xs={12} md={8} sx={{ height: '100%' }}>
-                    <Paper sx={{ height: '100%', display: 'flex', flexDirection: 'column', backgroundColor: '#ffffff' }}>
-                        <Typography variant="h5" sx={{ padding: 2, textAlign: 'center', fontWeight: 'bold' }}>
+                    <Paper
+                        sx={{
+                            height: '100%',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            backgroundColor: '#ffffff',
+                            boxShadow: '0 4px 10px rgba(0,0,0,0.1)',
+                            borderRadius: 2,
+                        }}
+                    >
+                        <Typography variant="h5" sx={{ padding: 3, textAlign: 'center', fontWeight: 'bold', color: '#555' }}>
                             Statut des tables
                         </Typography>
                         <PerfectScrollbar style={{ flex: 1 }}>
-                            <Grid container spacing={2} columns={5} sx={{ padding: 2 }}>
+                            <Grid container spacing={2} columns={5} sx={{ padding: 3 }}>
                                 {[...Array(TOTAL_TABLES)].map((_, index) => {
                                     const tableNumber = index + 1;
                                     const occupied = isTableOccupied(tableNumber);
 
                                     return (
                                         <Grid item xs={1} key={tableNumber} sx={{ display: 'flex', justifyContent: 'center' }}>
-                                            <Card
-                                                variant="outlined"
+                                            <Paper
                                                 sx={{
                                                     width: '100%',
-                                                    aspectRatio: '1/1', // Ensures square shape
+                                                    aspectRatio: '1/1',
                                                     padding: 1,
-                                                    borderLeft: `5px solid ${occupied ? '#ff9800' : '#4caf50'}`,
+                                                    borderLeft: `6px solid ${occupied ? '#ff9800' : '#4caf50'}`,
                                                     backgroundColor: occupied ? '#ffe0b2' : '#c8e6c9',
                                                     cursor: 'pointer',
-                                                    transition: 'transform 0.2s',
-                                                    '&:hover': { transform: 'scale(1.05)' },
+                                                    transition: 'transform 0.2s, box-shadow 0.2s',
+                                                    borderRadius: 2,
+                                                    '&:hover': {
+                                                        transform: 'scale(1.05)',
+                                                        boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
+                                                    },
                                                 }}
                                                 onClick={() => handleTableClick(tableNumber)}
                                             >
-                                                <CardContent sx={{ textAlign: 'center' }}>
+                                                <Box sx={{ textAlign: 'center' }}>
                                                     <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1 }}>
                                                         Table {tableNumber}
                                                     </Typography>
-                                                    <Typography variant="body2">
+                                                    <Typography variant="body2" sx={{ fontWeight: '500' }}>
                                                         {occupied ? 'Occupée' : 'Disponible'}
                                                     </Typography>
-                                                    {occupied && (
-                                                        <Typography variant="body2" color="textSecondary">
-                                                            Commande en attente: {pendingOrders.find(order => order.TableNumber === tableNumber.toString()).OrderNumber}
-                                                        </Typography>
-                                                    )}
-                                                </CardContent>
-                                            </Card>
+                                                </Box>
+                                            </Paper>
                                         </Grid>
                                     );
                                 })}
@@ -135,54 +165,80 @@ const Dashboard = () => {
 
                 {/* Pending Orders & Takeaway Button */}
                 <Grid item xs={12} md={4} sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                    <Paper sx={{ flexGrow: 1, backgroundColor: '#ffffff', display: 'flex', flexDirection: 'column' }}>
-                        <Typography variant="h5" sx={{ padding: 2, textAlign: 'center', fontWeight: 'bold' }}>
+                    <Paper
+                        sx={{
+                            flexGrow: 1,
+                            backgroundColor: '#ffffff',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            boxShadow: '0 4px 10px rgba(0,0,0,0.1)',
+                            borderRadius: 2,
+                            padding: 2,
+                        }}
+                    >
+                        <Typography variant="h5" sx={{ padding: 2, textAlign: 'center', fontWeight: 'bold', color: '#555' }}>
                             Commandes en attente
                         </Typography>
                         {/* Scrollable Pending Orders */}
                         <PerfectScrollbar style={{ height: '50vh' }}>
-                            <List sx={{ padding: 2 }}>
+                            <Stack spacing={1} sx={{ padding: 2 }}>
                                 {pendingOrders.map((order) => (
-                                    <React.Fragment key={order.OrderNumber}>
-                                        <ListItem
-                                            alignItems="flex-start"
-                                            button
-                                            onClick={() => handleOrderClick(order)}
-                                            sx={{ borderLeft: `5px solid #ff9800`, mb: 1 }}
-                                        >
-                                            <ListItemText
-                                                primary={
-                                                    <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-                                                        Commande N°{order.OrderNumber} - {order.Type} {order.TableNumber && `(Table: ${order.TableNumber})`}
-                                                    </Typography>
-                                                }
-                                                secondary={
-                                                    <>
-                                                        <Typography variant="body2" color="textSecondary">
-                                                            <strong>Statut:</strong> {order.Status}
-                                                        </Typography>
-                                                        <Typography variant="body2" color="textSecondary">
-                                                            <strong>Articles:</strong> {order.Items.length} articles
-                                                        </Typography>
-                                                    </>
-                                                }
-                                            />
-                                        </ListItem>
-                                        <Divider />
-                                    </React.Fragment>
+                                    <Paper
+                                        key={order.OrderNumber}
+                                        sx={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'space-between',
+                                            padding: 2,
+                                            borderRadius: 1,
+                                            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                                            border: '1px solid #e0e0e0',
+                                        }}
+                                    >
+                                        {/* Order Details */}
+                                        <Box sx={{ flex: 1 }}>
+                                            <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: '#333' }}>
+                                                Commande N°{order.OrderNumber}
+                                            </Typography>
+                                            <Typography variant="body2" color="textSecondary">
+                                                {order.Type} {order.TableNumber && `(Table: ${order.TableNumber})`}
+                                            </Typography>
+                                        </Box>
+                                        {/* Action Buttons */}
+                                        <Box sx={{ display: 'flex', gap: 1 }}>
+                                            <Button
+                                                variant="contained"
+                                                color="primary"
+                                                onClick={() => handleOrderClick(order)}
+                                                sx={{ textTransform: 'none', minWidth: '100px' }}
+                                                startIcon={<VisibilityIcon />}
+                                            >
+                                                Voir
+                                            </Button>
+                                            <Button
+                                                variant="contained"
+                                                color="secondary"
+                                                onClick={() => handlePayLaterClick(order)}
+                                                sx={{ textTransform: 'none', minWidth: '100px' }}
+                                                startIcon={<PaymentIcon />}
+                                            >
+                                                Payer plus tard
+                                            </Button>
+                                        </Box>
+                                    </Paper>
                                 ))}
-                            </List>
+                            </Stack>
                         </PerfectScrollbar>
                     </Paper>
 
-                    {/* Takeaway Button */}
-                    <Box sx={{ padding: 2 }}>
+                    {/* Takeaway & Delivery Buttons */}
+                    <Box sx={{ padding: 2, display: 'flex', gap: 2 }}>
                         <Button
                             variant="contained"
                             sx={{
+                                flexGrow: 1,
                                 padding: 1.5,
                                 fontWeight: 'bold',
-                                width: '100%',
                                 fontSize: '1.1rem',
                                 display: 'flex',
                                 alignItems: 'center',
@@ -192,11 +248,36 @@ const Dashboard = () => {
                                 '&:hover': {
                                     backgroundColor: '#c51162',
                                 },
+                                boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
                             }}
                             onClick={handleTakeawayClick}
                         >
                             <AddShoppingCartIcon />
                             Nouvelle commande à emporter
+                        </Button>
+
+                        {/* New Delivery Button */}
+                        <Button
+                            variant="contained"
+                            sx={{
+                                flexGrow: 1,
+                                padding: 1.5,
+                                fontWeight: 'bold',
+                                fontSize: '1.1rem',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 1,
+                                textTransform: 'none',
+                                backgroundColor: '#00c853',
+                                '&:hover': {
+                                    backgroundColor: '#009624',
+                                },
+                                boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
+                            }}
+                            onClick={handleDeliveryClick}
+                        >
+                            <DeliveryDiningIcon />
+                            Nouvelle commande de livraison
                         </Button>
                     </Box>
                 </Grid>

@@ -182,12 +182,7 @@ const Order = () => {
         );
     }
 
-    const handleItemClick = (item) => {
-        setSelectedItem({ ...item, quantity: 1 });
-        setRemovals([]);
-        setAddOns([]);
-        setOpenDialog(true);
-    };
+  
     const handleOutsideClick = () => {
         setKeyboardVisible(false);
     }; const handleKeyboardChange = (input) => {
@@ -197,30 +192,7 @@ const Order = () => {
             setDeliveryCharge(input);
         }
     };
-    const handleSaveItem = () => {
-        const updatedItem = {
-            ...selectedItem,
-            removals,
-            addOns,
-        };
-
-        const existingItemIndex = cart.findIndex(
-            (cartItem) =>
-                cartItem._id === updatedItem._id &&
-                JSON.stringify(cartItem.removals) === JSON.stringify(updatedItem.removals) &&
-                JSON.stringify(cartItem.addOns) === JSON.stringify(updatedItem.addOns)
-        );
-
-        if (existingItemIndex > -1) {
-            const updatedCart = [...cart];
-            updatedCart[existingItemIndex].quantity += 1;
-            setCart(updatedCart);
-        } else {
-            setCart([...cart, updatedItem]);
-        }
-
-        setOpenDialog(false);
-    };
+   
 
     const handleOrderTypeChange = (event, newType) => setOrderType(newType);
 
@@ -229,12 +201,16 @@ const Order = () => {
     const handleQuantityChange = (item, type) => {
         setCart(
             cart.map((cartItem) =>
-                cartItem._id === item._id
+                // Compare item not only by ID but also by specific ingredients, removals, and addOns
+                cartItem._id === item._id &&
+                JSON.stringify(cartItem.removals) === JSON.stringify(item.removals) &&
+                JSON.stringify(cartItem.addOns) === JSON.stringify(item.addOns)
                     ? { ...cartItem, quantity: type === 'increase' ? cartItem.quantity + 1 : cartItem.quantity - 1 }
                     : cartItem
             )
         );
     };
+    
 
     const toggleRemoveIngredient = (ingredient) => {
         setRemovals((prev) =>
@@ -272,54 +248,87 @@ const Order = () => {
     const handlePaymentMethodChange = async (method) => {
         try {
             setPaymentMethod(method);
+            
+            // Determine status based on payment method
+            const status = method === 'Pay Later' ? 'Pending' : 'Done';
+            
+            // Calculate the total price based on the order type
+            const totalPrice = cart.reduce((sum, item) => {
+                const itemPrice = orderType === 'Dine In' ? item.price : item.pricedel;
+                return sum + itemPrice * item.quantity;
+            }, 0);
     
             // Construct the order payload
             const payload = {
-                Status: "Pending", // Always set to Pending
+                Status: status, // Set status based on payment method
+                TotalPrice: totalPrice, // Include calculated total price
                 Items: cart.map(item => ({
-                    CategoryName: selectedCategory, // Use the selected category name
+                    CategoryName: selectedCategory,
                     Name: item.Name,
                     Description: item.Description || '',
                     PriceDineIn: item.price || 0,
                     PriceDelivery: item.pricedel || 0,
                     Quantity: item.quantity || 1,
-                    TypeItem: orderType, // Set the type based on order type
+                    TypeItem: orderType === 'Dine In' ? 'Dine In' : 'Takeaway', // Correct TypeItem
                     Ingredients: item.Ingredients || [],
                     Removals: item.removals || [],
                     AddOns: item.addOns || [],
-                    ItemPrice: orderType === 'Dine In' ? item.price * item.quantity : item.pricedel * item.quantity,
+                    ItemPrice: (orderType === 'Dine In' ? item.price : item.pricedel) * item.quantity,
                 })),
                 TableNumber: orderType === 'Dine In' ? tableNumber : "N/A",
-                DeleiveryCharge: orderType === 'Delivery' ? deliveryCharge : 0,
-                Location: orderType === 'Delivery' ? deliveryLocation : "N/A",
-                DateOfOrder: new Date().toISOString(),
-                Created_by: "N/A", // Assuming no user is creating it for now
+                DeliveryCharge: orderType === 'Delivery' ? deliveryCharge : 0, // Fix spelling to 'DeliveryCharge'
+                // Location: orderType === 'Delivery' ? deliveryLocation : "N/A",
+                // DateOfOrder: new Date().toISOString(), // Set current date and time
+                // Created_by: "N/A", // Replace with the actual user or "N/A"
             };
+            
     
             console.log("Order Payload:", payload);
     
-            // Make the POST request to create the order
-            const response = await axios.post(
-                `${process.env.REACT_APP_API_URL}/Order/CreateOrder`,
-                payload
-            );
+            // If orderNumber exists, update the order status
+            if (orderNumber) {
+                // Make a PUT request to update the existing order status
+                const updateResponse = await axios.put(
+                    `${process.env.REACT_APP_API_URL}/Order/UpdateOrderByOrderNumber/${orderNumber}`,
+                    payload
+                );
     
-            // Handle response
-            if (response.status === 200) {
-                toast.success('Order created successfully!', {
-                    position: "bottom-center",
-                    autoClose: 5000,
-                    hideProgressBar: false,
-                    closeOnClick: true,
-                    pauseOnHover: true,
-                    draggable: true,
-                });
+                if (updateResponse.status === 200) {
+                    toast.success('Order updated successfully!', {
+                        position: "bottom-center",
+                        autoClose: 5000,
+                        hideProgressBar: false,
+                        closeOnClick: true,
+                        pauseOnHover: true,
+                        draggable: true,
+                    });
+                }
+            } else {
+                // Otherwise, create a new order
+                const createResponse = await axios.post(
+                    `${process.env.REACT_APP_API_URL}/Order/CreateOrder`,
+                    payload
+                );
+    
+                if (createResponse.status === 200) {
+                    toast.success('Order created successfully!', {
+                        position: "bottom-center",
+                        autoClose: 5000,
+                        hideProgressBar: false,
+                        closeOnClick: true,
+                        pauseOnHover: true,
+                        draggable: true,
+                    });
+                }
             }
+    
+            // Redirect to the dashboard
+            navigate('/staff/dashboard'); // Make sure this is the correct route
     
             setOpenPaymentDialog(false);
         } catch (error) {
             console.error('Error with payment method:', error);
-            toast.error('An error occurred while creating the order.', {
+            toast.error('An error occurred while processing the order.', {
                 position: "bottom-center",
                 autoClose: 5000,
                 hideProgressBar: false,
@@ -331,6 +340,44 @@ const Order = () => {
     };
     
     
+    
+    const handleItemClick = (item) => {
+        setSelectedItem({ 
+            ...item, 
+            quantity: 1,
+            TypeItem: orderType // Set TypeItem based on orderType
+        });
+        setRemovals([]);
+        setAddOns([]);
+        setOpenDialog(true);
+    };
+    
+    // Modify handleSaveItem to always reflect the current orderType
+    const handleSaveItem = () => {
+        const updatedItem = {
+            ...selectedItem,
+            TypeItem: orderType, // Ensure TypeItem is set based on orderType
+            removals,
+            addOns,
+        };
+    
+        const existingItemIndex = cart.findIndex(
+            (cartItem) =>
+                cartItem._id === updatedItem._id &&
+                JSON.stringify(cartItem.removals) === JSON.stringify(updatedItem.removals) &&
+                JSON.stringify(cartItem.addOns) === JSON.stringify(updatedItem.addOns)
+        );
+    
+        if (existingItemIndex > -1) {
+            const updatedCart = [...cart];
+            updatedCart[existingItemIndex].quantity += 1;
+            setCart(updatedCart);
+        } else {
+            setCart([...cart, updatedItem]);
+        }
+    
+        setOpenDialog(false);
+    };
 
     const handleIngredientCategoryChange = (category) => {
         setSelectedIngredientCategory(category);
@@ -338,8 +385,18 @@ const Order = () => {
         setAvailableIngredients(selectedCat ? selectedCat.ingredients : []);
     };
 
-    const removeFromCart = (itemToRemove) => setCart(cart.filter(cartItem => cartItem._id !== itemToRemove._id));
-
+    const removeFromCart = (itemToRemove) => {
+        setCart(
+            cart.filter(
+                (cartItem) =>
+                    // Compare item not only by ID but also by specific ingredients, removals, and addOns
+                    cartItem._id !== itemToRemove._id ||
+                    JSON.stringify(cartItem.removals) !== JSON.stringify(itemToRemove.removals) ||
+                    JSON.stringify(cartItem.addOns) !== JSON.stringify(itemToRemove.addOns)
+            )
+        );
+    };
+    
     return (
         <Container maxWidth={false} sx={{ padding: 0, margin: 0, display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
         {loading ? (
