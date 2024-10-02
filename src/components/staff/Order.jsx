@@ -272,16 +272,65 @@ const Order = () => {
     const handlePaymentMethodChange = async (method) => {
         try {
             setPaymentMethod(method);
-            const status = method === 'Pay Later' ? 'Pending' : 'Done';
-
-            // Construct order payload and submit order based on status
-            // Add the logic to submit order here if needed
-
+    
+            // Construct the order payload
+            const payload = {
+                Status: "Pending", // Always set to Pending
+                Items: cart.map(item => ({
+                    CategoryName: selectedCategory, // Use the selected category name
+                    Name: item.Name,
+                    Description: item.Description || '',
+                    PriceDineIn: item.price || 0,
+                    PriceDelivery: item.pricedel || 0,
+                    Quantity: item.quantity || 1,
+                    TypeItem: orderType, // Set the type based on order type
+                    Ingredients: item.Ingredients || [],
+                    Removals: item.removals || [],
+                    AddOns: item.addOns || [],
+                    ItemPrice: orderType === 'Dine In' ? item.price * item.quantity : item.pricedel * item.quantity,
+                })),
+                TableNumber: orderType === 'Dine In' ? tableNumber : "N/A",
+                DeleiveryCharge: orderType === 'Delivery' ? deliveryCharge : 0,
+                Location: orderType === 'Delivery' ? deliveryLocation : "N/A",
+                DateOfOrder: new Date().toISOString(),
+                Created_by: "N/A", // Assuming no user is creating it for now
+            };
+    
+            console.log("Order Payload:", payload);
+    
+            // Make the POST request to create the order
+            const response = await axios.post(
+                `${process.env.REACT_APP_API_URL}/Order/CreateOrder`,
+                payload
+            );
+    
+            // Handle response
+            if (response.status === 200) {
+                toast.success('Order created successfully!', {
+                    position: "bottom-center",
+                    autoClose: 5000,
+                    hideProgressBar: false,
+                    closeOnClick: true,
+                    pauseOnHover: true,
+                    draggable: true,
+                });
+            }
+    
             setOpenPaymentDialog(false);
         } catch (error) {
             console.error('Error with payment method:', error);
+            toast.error('An error occurred while creating the order.', {
+                position: "bottom-center",
+                autoClose: 5000,
+                hideProgressBar: false,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+            });
         }
     };
+    
+    
 
     const handleIngredientCategoryChange = (category) => {
         setSelectedIngredientCategory(category);
