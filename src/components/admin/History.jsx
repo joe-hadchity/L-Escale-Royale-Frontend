@@ -127,7 +127,7 @@ const History = () => {
               <TableCell>Numéro de table</TableCell>
               <TableCell>Frais de livraison</TableCell>
               <TableCell>Emplacement</TableCell>
-              <TableCell>Prix total</TableCell>
+              <TableCell>Prix total (CFA)</TableCell>
               <TableCell>Articles</TableCell>
             </TableRow>
           </TableHead>
@@ -143,18 +143,18 @@ const History = () => {
                   <TableCell>{order.Status || 'N/A'}</TableCell>
                   <TableCell>{order.TableNumber || 'N/A'}</TableCell>
                   <TableCell>
-                    {order.DeleiveryCharge ? `${order.DeleiveryCharge.toFixed(2)} €` : 'N/A'}
+                    {order.DeleiveryCharge ? `${order.DeleiveryCharge.toFixed(2)} ` : 'N/A'}
                   </TableCell>
                   <TableCell>{order.Location || 'N/A'}</TableCell>
                   <TableCell>
-                    {order.TotalPrice ? `${order.TotalPrice.toFixed(2)} €` : 'N/A'}
+                    {order.TotalPrice ? `${order.TotalPrice.toFixed(2)} ` : 'N/A'}
                   </TableCell>
                   <TableCell>
                     {order.Items && order.Items.length > 0 ? (
                       <ul>
                         {order.Items.map((item, i) => (
                           <li key={i}>
-                            {item.Quantity} x {item.Price} €
+                            {item.Quantity}
                           </li>
                         ))}
                       </ul>

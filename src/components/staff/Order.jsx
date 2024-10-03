@@ -3,6 +3,7 @@ import axios from 'axios';
 import { useLocation } from 'react-router-dom';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+
 import {
     Grid,
     Typography,
@@ -30,6 +31,9 @@ import { Delete, AddCircle, RemoveCircle } from '@mui/icons-material';
 import { useOrder } from '../../context/OrderContext';
 import { useNavigate } from 'react-router-dom';
 import Keyboard from 'react-simple-keyboard';
+
+import PerfectScrollbar from 'react-perfect-scrollbar';
+import 'react-perfect-scrollbar/dist/css/styles.css';
 import 'react-simple-keyboard/build/css/index.css';
 
 const Order = () => {
@@ -82,7 +86,8 @@ const Order = () => {
             }));
             setCart(itemsToCart);
             setOrderType(selectedOrder.Type);
-            setTableNumber(selectedOrder.TableNumber);
+            setTableNumber(selectedOrder.TableNumber || ''); // Ensure tableNumber is set correctly
+            console.log(selectedOrder)
         } else {
             setCart([]);
         }
@@ -182,17 +187,16 @@ const Order = () => {
         );
     }
 
-  
     const handleOutsideClick = () => {
         setKeyboardVisible(false);
-    }; const handleKeyboardChange = (input) => {
+    }; 
+    const handleKeyboardChange = (input) => {
         if (keyboardField === 'location') {
             setDeliveryLocation(input);
         } else if (keyboardField === 'charge') {
             setDeliveryCharge(input);
         }
     };
-   
 
     const handleOrderTypeChange = (event, newType) => setOrderType(newType);
 
@@ -201,7 +205,6 @@ const Order = () => {
     const handleQuantityChange = (item, type) => {
         setCart(
             cart.map((cartItem) =>
-                // Compare item not only by ID but also by specific ingredients, removals, and addOns
                 cartItem._id === item._id &&
                 JSON.stringify(cartItem.removals) === JSON.stringify(item.removals) &&
                 JSON.stringify(cartItem.addOns) === JSON.stringify(item.addOns)
@@ -210,7 +213,6 @@ const Order = () => {
             )
         );
     };
-    
 
     const toggleRemoveIngredient = (ingredient) => {
         setRemovals((prev) =>
@@ -248,36 +250,32 @@ const Order = () => {
     const handlePaymentMethodChange = async (method) => {
         try {
             setPaymentMethod(method);
-            
+    
             // Determine status based on payment method
             const status = method === 'Pay Later' ? 'Pending' : 'Done';
-        
     
             // Construct the order payload
             const payload = {
-                Status: status, // The status is dynamically set based on your logic (e.g., 'Pending', 'Done')
-                Items: cart.map(item => ({
-                  CategoryName: selectedCategory, // Category is based on the selected category for the item
-                  Name: item.Name, // Name of the item
-                  Description: item.Description || '', // Item description if available, otherwise an empty string
-                  PriceDineIn: item.price || 0, // Price for Dine-In; default is 0 if not provided
-                  PriceDelivery: item.pricedel || 0, // Price for Delivery; default is 0 if not provided
-                  Quantity: item.quantity || 1, // Quantity of the item ordered; default is 1
-                  TypeItem: orderType === 'Dine In' ? 'Dine In' : 'TakeAway', // Type of item, either 'Dine In' or 'Takeaway'
-                  Ingredients: item.Ingredients || [], // Ingredients associated with the item, default to empty array if none
-                  Removals: item.removals || [], // Items removed from the order (if any), default to empty array
-                  AddOns: item.addOns || [], // Add-ons to the item, default to empty array
-                  ItemPrice: (orderType === 'Dine In' ? item.price : item.pricedel) * item.quantity, // Item price based on order type and quantity
+                Status: status,
+                Items: cart.map((item) => ({
+                    CategoryName: selectedCategory,
+                    Name: item.Name,
+                    Description: item.Description || '',
+                    PriceDineIn: item.price || 0,
+                    PriceDelivery: item.pricedel || 0,
+                    Quantity: item.quantity || 1,
+                    TypeItem: orderType === 'Dine In' ? 'Dine In' : 'TakeAway',
+                    Ingredients: item.Ingredients || [],
+                    Removals: item.removals || [],
+                    AddOns: item.addOns || [],
                 })),
-                TableNumber: orderType === 'Dine In' ? tableNumber : '0', // Table number for dine-in orders; N/A for takeaway or delivery
-                DeliveryCharge: orderType === 'Delivery' ? deliveryCharge : 0, // Delivery charge 
-              };
-              
-           
-            console.log("Order Payload:", payload);
-            // If orderNumber exists, update the order status
+                TableNumber: orderType === 'Dine In' ? tableNumber.toString() : '0',
+                DeliveryCharge: orderType === 'Delivery' ? parseFloat(deliveryCharge) : 0,
+            };
+    
+            // If orderNumber exists, update the order
             if (orderNumber) {
-                // Make a PUT request to update the existing order status
+                console.log(payload.TableNumber)
                 const updateResponse = await axios.put(
                     `${process.env.REACT_APP_API_URL}/Order/UpdateOrderByOrderNumber/${orderNumber}`,
                     payload
@@ -313,7 +311,7 @@ const Order = () => {
             }
     
             // Redirect to the dashboard
-            navigate('/staff/dashboard'); // Make sure this is the correct route
+            navigate('/staff/dashboard');
     
             setOpenPaymentDialog(false);
         } catch (error) {
@@ -328,25 +326,22 @@ const Order = () => {
             });
         }
     };
-    
-    
-    
+
     const handleItemClick = (item) => {
         setSelectedItem({ 
             ...item, 
             quantity: 1,
-            TypeItem: orderType // Set TypeItem based on orderType
+            TypeItem: orderType
         });
         setRemovals([]);
         setAddOns([]);
         setOpenDialog(true);
     };
-    
-    // Modify handleSaveItem to always reflect the current orderType
+
     const handleSaveItem = () => {
         const updatedItem = {
             ...selectedItem,
-            TypeItem: orderType, // Ensure TypeItem is set based on orderType
+            TypeItem: orderType,
             removals,
             addOns,
         };
@@ -379,7 +374,6 @@ const Order = () => {
         setCart(
             cart.filter(
                 (cartItem) =>
-                    // Compare item not only by ID but also by specific ingredients, removals, and addOns
                     cartItem._id !== itemToRemove._id ||
                     JSON.stringify(cartItem.removals) !== JSON.stringify(itemToRemove.removals) ||
                     JSON.stringify(cartItem.addOns) !== JSON.stringify(itemToRemove.addOns)
@@ -389,240 +383,240 @@ const Order = () => {
     
     return (
         <Container maxWidth={false} sx={{ padding: 0, margin: 0, display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
-        {loading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-                <CircularProgress />
-            </Box>
-        ) : (
-            <Grid container spacing={1} sx={{ height: '100vh', overflow: 'hidden' }}>
-                {/* Categories Section */}
-                <Grid item xs={1.5} sx={{ backgroundColor: '#f0f0f0', padding: 1, boxShadow: 3, borderRight: '1px solid #e0e0e0' }}>
-                    <Typography variant="h6" sx={{ mb: 1, fontWeight: 'bold', textAlign: 'center' }}>
-                        Categories
-                    </Typography>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, overflowY: 'auto', height: '90vh' }}>
-                        {categories.map((category) => (
-                            <Button
-                                key={category._id || category.Name}
-                                variant={selectedCategory === category.Name ? 'contained' : 'outlined'}
-                                onClick={() => setSelectedCategory(category.Name)}
-                                fullWidth
-                                sx={{ padding: '10px', fontSize: '14px', fontWeight: '500', borderRadius: '8px' }}
-                            >
-                                {category.Name}
-                            </Button>
-                        ))}
-                    </Box>
-                </Grid>
-
-                {/* Items Section */}
-                <Grid item xs={6.5} sx={{ padding: 1 }}>
-                    <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1, mb: 1 }}>
-                        <ToggleButtonGroup value={orderType} exclusive onChange={(e, newType) => setOrderType(newType)}>
-                            <ToggleButton value="Dine In" sx={{ fontWeight: 'bold' }}>
-                                Dine In
-                            </ToggleButton>
-                            <ToggleButton value="Takeaway" sx={{ fontWeight: 'bold' }}>
-                                Takeaway
-                            </ToggleButton>
-                            <ToggleButton value="Delivery" sx={{ fontWeight: 'bold' }}>
-                                Delivery
-                            </ToggleButton>
-                        </ToggleButtonGroup>
-                    </Box>
-
-                    {/* Table Number Selection for Dine In */}
-                    {orderType === 'Dine In' && (
-                        <Box sx={{ display: 'flex', gap: 1, overflowX: 'auto', mb: 2, padding: '4px', justifyContent: 'center' }}>
-                            {tableNumbers.map((num) => (
+            {loading ? (
+                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+                    <CircularProgress />
+                </Box>
+            ) : (
+                <Grid container spacing={0} sx={{ height: '100vh', overflow: 'hidden' }}>
+                    {/* Categories Section */}
+                    <Grid item xs={1.5} sx={{ backgroundColor: '#f0f0f0', padding: 1, boxShadow: 3, borderRight: '1px solid #e0e0e0' }}>
+                        <Typography variant="h6" sx={{ mb: 1, fontWeight: 'bold', textAlign: 'center' }}>
+                            Categories
+                        </Typography>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, overflowY: 'auto', height: '90vh' }}>
+                            {categories.map((category) => (
                                 <Button
-                                    key={`table-${num}`}
-                                    variant={tableNumber === num ? 'contained' : 'outlined'}
-                                    onClick={() => handleTableNumberSelect(num)}
-                                    sx={{ minWidth: '40px', fontSize: '12px', padding: '6px 8px' }}
+                                    key={category._id || category.Name}
+                                    variant={selectedCategory === category.Name ? 'contained' : 'outlined'}
+                                    onClick={() => setSelectedCategory(category.Name)}
+                                    fullWidth
+                                    sx={{ padding: '10px', fontSize: '14px', fontWeight: '500', borderRadius: '8px' }}
                                 >
-                                    {num}
+                                    {category.Name}
                                 </Button>
                             ))}
                         </Box>
-                    )}
+                    </Grid>
 
-                    {/* Delivery Location Input */}
-                    {orderType === 'Delivery' && (
-                        <Box sx={{ mb: 2 }}>
-                            <TextField
-                                label="Delivery Location"
-                                fullWidth
-                                variant="outlined"
-                                value={deliveryLocation}
-                                onFocus={() => setKeyboardVisible(true)}
-                                onChange={(e) => handleDeliveryLocationChange(e.target.value)}
-                            />
-                           {keyboardVisible && (
-                <Box
-                    sx={{
-                        position: 'fixed',
-                        top: 0,
-                        left: 0,
-                        width: '100%',
-                        height: '100%',
-                        zIndex: 1500,
-                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                    }}
-                    onClick={handleOutsideClick}
-                >
-                    <Box
-                        sx={{
-                            position: 'absolute',
-                            bottom: 0,
-                            width: '100%',
-                            backgroundColor: '#fff',
-                            padding: '20px',
-                            zIndex: 1600,
-                        }}
-                    >
-                        <Keyboard
-                            onChange={(value) => handleKeyboardChange(value)}
-                            onKeyPress={(button) => button === '{enter}' && setKeyboardVisible(false)}
-                            theme="hg-theme-default"
-                            layoutName="default"
-                        />
-                    </Box>
-                </Box>
-            )}
+                    {/* Items Section */}
+                    <Grid item xs={6.5} sx={{ padding: 1 }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1, mb: 1 }}>
+                            <ToggleButtonGroup value={orderType} exclusive onChange={(e, newType) => setOrderType(newType)}>
+                                <ToggleButton value="Dine In" sx={{ fontWeight: 'bold' }}>
+                                    Dine In
+                                </ToggleButton>
+                                <ToggleButton value="Takeaway" sx={{ fontWeight: 'bold' }}>
+                                    Takeaway
+                                </ToggleButton>
+                                <ToggleButton value="Delivery" sx={{ fontWeight: 'bold' }}>
+                                    Delivery
+                                </ToggleButton>
+                            </ToggleButtonGroup>
                         </Box>
-                    )}
 
-                    <Typography variant="h6" sx={{ mb: 1, fontWeight: 'bold' }}>
-                        Select an Item
-                    </Typography>
-                    {loading ? (
-                        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
-                            <CircularProgress />
-                        </Box>
-                    ) : error ? (
-                        <Typography variant="body1" color="error" textAlign="center">
-                            {error}
-                        </Typography>
-                    ) : (
-                        <Grid container spacing={1} sx={{ maxHeight: '70vh', overflowY: 'auto', paddingRight: '8px' }}>
-                            {items.map((item) => (
-                                <Grid item xs={2.4} key={item._id}>
-                                    <Card
-                                        elevation={3}
-                                        sx={{ cursor: 'pointer', padding: '8px', borderRadius: '8px' }}
-                                        onClick={() => handleItemClick(item)}
-                                    >
-                                        <CardContent sx={{ textAlign: 'center', padding: '6px' }}>
-                                            <Typography variant="subtitle2" sx={{ fontWeight: '600' }}>
-                                                {item.Name}
-                                            </Typography>
-                                            <Typography variant="caption" color="textSecondary">
-                                                {calculateItemPrice(item)} CFA
-                                            </Typography>
-                                        </CardContent>
-                                    </Card>
-                                </Grid>
-                            ))}
-                        </Grid>
-                    )}
-                </Grid>
-
-                {/* Cart Section */}
-                <Grid item xs={4} sx={{ backgroundColor: '#f0f0f0', padding: 2, boxShadow: 3, borderLeft: '1px solid #e0e0e0' }}>
-                    <Typography variant="h6" sx={{ mb: 1, fontWeight: 'bold', textAlign: 'center' }}>
-                        Cart
-                    </Typography>
-
-                    {/* Order Information */}
-                    <Box sx={{ marginBottom: 2 }}>
-                        <Typography variant="body1" sx={{ fontWeight: 'bold', textAlign: 'center', fontSize: '1rem', mb: 1 }}>
-                            Order N°{orderNumber}
-                        </Typography>
+                        {/* Table Number Selection for Dine In */}
                         {orderType === 'Dine In' && (
-                            <Typography variant="body1" sx={{ fontWeight: 'bold', textAlign: 'center', fontSize: '1rem' }}>
-                                Table: {tableNumber}
-                            </Typography>
-                        )}
-                    </Box>
-
-                    {cart.length === 0 ? (
-                        <Typography color="textSecondary" textAlign="center">
-                            Your cart is empty
-                        </Typography>
-                    ) : (
-                        <Box sx={{ maxHeight: '65vh', overflowY: 'auto', padding: '8px' }}>
-                            <List dense>
-                                {cart.map((cartItem, index) => (
-                                    <React.Fragment key={`cart-item-${cartItem._id || index}`}>
-                                        <ListItem
-                                            secondaryAction={
-                                                <IconButton edge="end" aria-label="delete" onClick={() => removeFromCart(cartItem)}>
-                                                    <Delete />
-                                                </IconButton>
-                                            }
-                                            sx={{ alignItems: 'flex-start', marginBottom: 1, borderBottom: '1px solid #e0e0e0' }}
-                                        >
-                                            <Box sx={{ flex: 1 }}>
-                                                <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
-                                                    {cartItem.Name}
-                                                </Typography>
-                                                <Typography variant="body2">
-                                                    {orderType === 'Dine In' ? cartItem.price : cartItem.pricedel} CFA x {cartItem.quantity}
-                                                </Typography>
-
-                                                {/* Display Removals */}
-                                                {cartItem.removals && cartItem.removals.length > 0 && (
-                                                    <Typography variant="body2" color="error">
-                                                        Removals: {cartItem.removals.map((rem) => rem.Name).join(', ')}
-                                                    </Typography>
-                                                )}
-
-                                                {/* Display Add-ons */}
-                                                {cartItem.addOns && cartItem.addOns.length > 0 && (
-                                                    <Typography variant="body2" color="primary">
-                                                        Add-ons: {cartItem.addOns.map((add) => add.Name).join(', ')}
-                                                    </Typography>
-                                                )}
-                                            </Box>
-
-                                            {/* Quantity Controls */}
-                                            <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-                                                <IconButton
-                                                    aria-label="decrease"
-                                                    onClick={() => handleQuantityChange(cartItem, 'decrease')}
-                                                    disabled={cartItem.quantity <= 1}
-                                                >
-                                                    <RemoveCircle />
-                                                </IconButton>
-                                                <Typography variant="body1" sx={{ mx: 1 }}>
-                                                    {cartItem.quantity}
-                                                </Typography>
-                                                <IconButton aria-label="increase" onClick={() => handleQuantityChange(cartItem, 'increase')}>
-                                                    <AddCircle />
-                                                </IconButton>
-                                            </Box>
-                                        </ListItem>
-                                        <Divider />
-                                    </React.Fragment>
+                            <Box sx={{ display: 'flex', gap: 1, overflowX: 'auto', mb: 2, padding: '4px', justifyContent: 'center' }}>
+                                {tableNumbers.map((num) => (
+                                    <Button
+                                        key={`table-${num}`}
+                                        variant={tableNumber === num ? 'contained' : 'outlined'}
+                                        onClick={() => handleTableNumberSelect(num)}
+                                        sx={{ minWidth: '40px', fontSize: '12px', padding: '6px 8px' }}
+                                    >
+                                        {num}
+                                    </Button>
                                 ))}
-                            </List>
+                            </Box>
+                        )}
+
+                        {/* Delivery Location Input */}
+                        {orderType === 'Delivery' && (
+                            <Box sx={{ mb: 2 }}>
+                                <TextField
+                                    label="Delivery Location"
+                                    fullWidth
+                                    variant="outlined"
+                                    value={deliveryLocation}
+                                    onFocus={() => setKeyboardVisible(true)}
+                                    onChange={(e) => handleDeliveryLocationChange(e.target.value)}
+                                />
+                                {keyboardVisible && (
+                                    <Box
+                                        sx={{
+                                            position: 'fixed',
+                                            top: 0,
+                                            left: 0,
+                                            width: '100%',
+                                            height: '100%',
+                                            zIndex: 1500,
+                                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                                        }}
+                                        onClick={handleOutsideClick}
+                                    >
+                                        <Box
+                                            sx={{
+                                                position: 'absolute',
+                                                bottom: 0,
+                                                width: '100%',
+                                                backgroundColor: '#fff',
+                                                padding: '20px',
+                                                zIndex: 1600,
+                                            }}
+                                        >
+                                            <Keyboard
+                                                onChange={(value) => handleKeyboardChange(value)}
+                                                onKeyPress={(button) => button === '{enter}' && setKeyboardVisible(false)}
+                                                theme="hg-theme-default"
+                                                layoutName="default"
+                                            />
+                                        </Box>
+                                    </Box>
+                                )}
+                            </Box>
+                        )}
+
+                        <Typography variant="h6" sx={{ mb: 1, fontWeight: 'bold' }}>
+                            Select an Item
+                        </Typography>
+                        {loading ? (
+                            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
+                                <CircularProgress />
+                            </Box>
+                        ) : error ? (
+                            <Typography variant="body1" color="error" textAlign="center">
+                                {error}
+                            </Typography>
+                        ) : (
+                            <Grid container spacing={1} sx={{ maxHeight: '70vh', overflowY: 'auto', paddingRight: '8px' }}>
+                                {items.map((item) => (
+                                    <Grid item xs={2.4} key={item._id}>
+                                        <Card
+                                            elevation={3}
+                                            sx={{ cursor: 'pointer', padding: '8px', borderRadius: '8px' }}
+                                            onClick={() => handleItemClick(item)}
+                                        >
+                                            <CardContent sx={{ textAlign: 'center', padding: '6px' }}>
+                                                <Typography variant="subtitle2" sx={{ fontWeight: '600' }}>
+                                                    {item.Name}
+                                                </Typography>
+                                                <Typography variant="caption" color="textSecondary">
+                                                    {calculateItemPrice(item)} CFA
+                                                </Typography>
+                                            </CardContent>
+                                        </Card>
+                                    </Grid>
+                                ))}
+                            </Grid>
+                        )}
+                    </Grid>
+
+                    {/* Cart Section */}
+                    <Grid item xs={4} sx={{ backgroundColor: '#f0f0f0', padding: 2, boxShadow: 3, borderLeft: '1px solid #e0e0e0' }}>
+                        <Typography variant="h6" sx={{ mb: 1, fontWeight: 'bold', textAlign: 'center' }}>
+                            Cart
+                        </Typography>
+
+                        {/* Order Information */}
+                        <Box sx={{ marginBottom: 2 }}>
+                            <Typography variant="body1" sx={{ fontWeight: 'bold', textAlign: 'center', fontSize: '1rem', mb: 1 }}>
+                                Order N°{orderNumber}
+                            </Typography>
+                            {orderType === 'Dine In' && (
+                                <Typography variant="body1" sx={{ fontWeight: 'bold', textAlign: 'center', fontSize: '1rem' }}>
+                                    Table: {tableNumber}
+                                </Typography>
+                            )}
                         </Box>
-                    )}
-                    {cart.length > 0 && (
-                        <Button
-                            variant="contained"
-                            color="primary"
-                            fullWidth
-                            sx={{ padding: '15px', mt: 3, fontWeight: 'bold', position: 'sticky', bottom: 0 }}
-                            onClick={handleValidateOrder}
-                        >
-                            Place Order
-                        </Button>
-                    )}
+
+                        {cart.length === 0 ? (
+                            <Typography color="textSecondary" textAlign="center">
+                                Your cart is empty
+                            </Typography>
+                        ) : (
+                            <Box sx={{ maxHeight: '65vh', overflowY: 'auto', padding: '8px' }}>
+                                <List dense>
+                                    {cart.map((cartItem, index) => (
+                                        <React.Fragment key={`cart-item-${cartItem._id || index}`}>
+                                            <ListItem
+                                                secondaryAction={
+                                                    <IconButton edge="end" aria-label="delete" onClick={() => removeFromCart(cartItem)}>
+                                                        <Delete />
+                                                    </IconButton>
+                                                }
+                                                sx={{ alignItems: 'flex-start', marginBottom: 1, borderBottom: '1px solid #e0e0e0' }}
+                                            >
+                                                <Box sx={{ flex: 1 }}>
+                                                    <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
+                                                        {cartItem.Name}
+                                                    </Typography>
+                                                    <Typography variant="body2">
+                                                        {orderType === 'Dine In' ? cartItem.price : cartItem.pricedel} CFA x {cartItem.quantity}
+                                                    </Typography>
+
+                                                    {/* Display Removals */}
+                                                    {cartItem.removals && cartItem.removals.length > 0 && (
+                                                        <Typography variant="body2" color="error">
+                                                            Removals: {cartItem.removals.map((rem) => rem.Name).join(', ')}
+                                                        </Typography>
+                                                    )}
+
+                                                    {/* Display Add-ons */}
+                                                    {cartItem.addOns && cartItem.addOns.length > 0 && (
+                                                        <Typography variant="body2" color="primary">
+                                                            Add-ons: {cartItem.addOns.map((add) => add.Name).join(', ')}
+                                                        </Typography>
+                                                    )}
+                                                </Box>
+
+                                                {/* Quantity Controls */}
+                                                <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+                                                    <IconButton
+                                                        aria-label="decrease"
+                                                        onClick={() => handleQuantityChange(cartItem, 'decrease')}
+                                                        disabled={cartItem.quantity <= 1}
+                                                    >
+                                                        <RemoveCircle />
+                                                    </IconButton>
+                                                    <Typography variant="body1" sx={{ mx: 1 }}>
+                                                        {cartItem.quantity}
+                                                    </Typography>
+                                                    <IconButton aria-label="increase" onClick={() => handleQuantityChange(cartItem, 'increase')}>
+                                                        <AddCircle />
+                                                    </IconButton>
+                                                </Box>
+                                            </ListItem>
+                                            <Divider />
+                                        </React.Fragment>
+                                    ))}
+                                </List>
+                            </Box>
+                        )}
+                        {cart.length > 0 && (
+                            <Button
+                                variant="contained"
+                                color="primary"
+                                fullWidth
+                                sx={{ padding: '15px', mt: 3, fontWeight: 'bold', position: 'sticky', bottom: 0 }}
+                                onClick={handleValidateOrder}
+                            >
+                                Place Order
+                            </Button>
+                        )}
+                    </Grid>
                 </Grid>
-            </Grid>
-        )}
+            )}
             {/* Item Editing Modal */}
             <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="md">
                 <DialogTitle>Edit {selectedItem?.Name}</DialogTitle>
@@ -665,7 +659,7 @@ const Order = () => {
                             <Typography variant="h6" sx={{ mt: 2, fontWeight: 'bold' }}>
                                 Add Ingredients
                             </Typography>
-                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
+                            <Box sx={{ display: 'flex', flexDirection: 'row', gap: 2, mt: 2 }}>
                                 {ingredientsCategories.map((cat, index) => (
                                     <Button
                                         key={index}
@@ -681,7 +675,7 @@ const Order = () => {
                                 {availableIngredients.map((ingredient, index) => (
                                     <Chip
                                         key={index}
-                                        label={ingredient.Name}
+                                        label={`${ingredient.Name}: ${ingredient.Price} CFA`}
                                         color={addOns.includes(ingredient) ? 'primary' : 'default'}
                                         onClick={() => toggleAddIngredient(ingredient)}
                                         sx={{ fontWeight: 'bold', cursor: 'pointer' }}

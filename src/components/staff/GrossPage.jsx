@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     Container,
     Typography,
@@ -20,6 +20,8 @@ import {
     Alert,
 } from '@mui/material';
 import axios from 'axios';
+import PerfectScrollbar from 'react-perfect-scrollbar';
+import 'react-perfect-scrollbar/dist/css/styles.css';
 
 const GrossPage = () => {
     const [grossStatus, setGrossStatus] = useState(null);
@@ -31,21 +33,44 @@ const GrossPage = () => {
     const [reportLoading, setReportLoading] = useState(false);
     const [error, setError] = useState(null);
 
-    useEffect(() => {
-        const fetchGrossDetails = async () => {
-            try {
-                const response = await axios.get(`${process.env.REACT_APP_API_URL}/Gross/GetLatestGross`);
-                const latestGross = response.data;
+    const reportRef = useRef();
+
+    const fetchGrossDetails = async () => {
+        try {
+            const response = await axios.get(`${process.env.REACT_APP_API_URL}/Gross/GetLatestGross`);
+            const latestGross = response.data;
+
+            if (latestGross) {
                 setGrossStatus(latestGross.Status);
                 setGrossTotal(latestGross.TotalGross || 0);
-            } catch (error) {
-                console.error('Error fetching Gross details:', error);
-                setError('Failed to fetch Gross details.');
-            } finally {
-                setLoading(false);
+            } else {
+                setGrossStatus(null);
+                setGrossTotal(0);
             }
-        };
+        } catch (error) {
+            console.error('Error fetching Gross details:', error);
+            setError('Failed to fetch Gross details.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchReport = async () => {
+        setReportLoading(true);
+        try {
+            const response = await axios.post(`${process.env.REACT_APP_API_URL}/Report/CreateReport`);
+            setReportData(response.data);
+        } catch (error) {
+            console.error('Error fetching report data:', error);
+            setError('Failed to fetch report data. Please try again later.');
+        } finally {
+            setReportLoading(false);
+        }
+    };
+
+    useEffect(() => {
         fetchGrossDetails();
+        fetchReport();
     }, []);
 
     const handleCreateGross = async () => {
@@ -69,7 +94,7 @@ const GrossPage = () => {
                 const grossNumber = latestGross.GrossNumber;
                 await axios.put(`${process.env.REACT_APP_API_URL}/Gross/UpdateGrossByGrossNumber/${grossNumber}`, { Status: 'Closed' });
                 setGrossStatus('Closed');
-                fetchReport(); // Fetch report after closing gross
+                fetchReport();
             }
         } catch (error) {
             console.error('Error closing the Gross:', error);
@@ -77,28 +102,6 @@ const GrossPage = () => {
         }
     };
 
-    const fetchReport = async () => {
-        setReportLoading(true);
-        try {
-            console.log('Attempting to create report...');
-    
-            // Create the report using the backend endpoint
-            const response = await axios.post(`${process.env.REACT_APP_API_URL}/Report/CreateReport`);
-            
-            console.log('Report created successfully. Response:', response);
-    
-            setReportData(response.data);
-    
-            console.log('Report data set:', response.data);
-        } catch (error) {
-            console.error('Error fetching report data:', error);
-            setError('Failed to fetch report data. Please try again later.');
-        } finally {
-            console.log('Finished fetching report.');
-            setReportLoading(false);
-        }
-    };
-    
     const handleKeyPress = (value) => {
         if (value === 'clear') {
             setOpeningBalance('');
@@ -113,27 +116,37 @@ const GrossPage = () => {
         return value.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
     };
 
+    const handlePrint = () => {
+        const printContent = reportRef.current;
+        const printWindow = window.open('', '', 'width=800,height=600');
+        printWindow.document.write('<html><head><title>Print Report</title>');
+        printWindow.document.write('</head><body >');
+        printWindow.document.write(printContent.innerHTML);
+        printWindow.document.write('</body></html>');
+        printWindow.document.close();
+        printWindow.print();
+    };
+
     return (
         <Container maxWidth="md" sx={{ py: 4, textAlign: 'center' }}>
-            <Typography variant="h4" sx={{ mb: 4, fontWeight: 'bold' }}>
+            <Typography variant="h4" sx={{ mb: 4, fontWeight: 'bold', color: '#1976D2' }}>
                 Gestion du Gross
             </Typography>
 
-            {/* Display error if exists */}
             {error && (
                 <Alert severity="error" onClose={() => setError(null)} sx={{ mb: 4 }}>
                     {error}
                 </Alert>
             )}
 
-            <Paper elevation={3} sx={{ p: 3, borderRadius: '10px', mb: 4 }}>
+            <Paper elevation={3} sx={{ p: 4, borderRadius: '12px', mb: 4 }}>
                 {loading ? (
-                    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100px' }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '150px' }}>
                         <CircularProgress />
                     </Box>
                 ) : (
                     <>
-                        <Typography variant="h6" sx={{ mb: 2 }}>
+                        <Typography variant="h6" sx={{ mb: 3 }}>
                             {grossStatus === null
                                 ? 'Aucun gross ouvert pour aujourd\'hui'
                                 : `Statut actuel du Gross: ${grossStatus}`}
@@ -145,13 +158,15 @@ const GrossPage = () => {
                             </Typography>
                         )}
 
-                        <Box sx={{ mt: 3 }}>
+                        <Divider sx={{ my: 3 }} />
+
+                        <Box sx={{ display: 'flex', justifyContent: 'center' }}>
                             {grossStatus === 'Open' ? (
                                 <Button
                                     variant="contained"
                                     color="secondary"
                                     onClick={handleCloseGross}
-                                    sx={{ fontWeight: 'bold', padding: '12px 24px', mb: 2 }}
+                                    sx={{ fontWeight: 'bold', px: 4, py: 1.5, mb: 2 }}
                                 >
                                     Fermer le Gross
                                 </Button>
@@ -160,7 +175,7 @@ const GrossPage = () => {
                                     variant="contained"
                                     color="primary"
                                     onClick={() => setOpenDialog(true)}
-                                    sx={{ fontWeight: 'bold', padding: '12px 24px', mb: 2 }}
+                                    sx={{ fontWeight: 'bold', px: 4, py: 1.5, mb: 2 }}
                                 >
                                     Ouvrir un Nouveau Gross
                                 </Button>
@@ -168,7 +183,7 @@ const GrossPage = () => {
                         </Box>
 
                         {grossStatus === 'Closed' && (
-                            <Typography variant="h6" color="error" sx={{ fontWeight: 'bold' }}>
+                            <Typography variant="h6" color="error" sx={{ fontWeight: 'bold', mt: 2 }}>
                                 Le gross est fermé pour aujourd'hui.
                             </Typography>
                         )}
@@ -176,69 +191,82 @@ const GrossPage = () => {
                 )}
             </Paper>
 
-            {/* Reporting Section - Only visible when the gross is closed */}
             {grossStatus === 'Closed' && (
-                <Paper elevation={3} sx={{ p: 3, borderRadius: '10px', mt: 4 }}>
-                    <Typography variant="h5" sx={{ mb: 2, fontWeight: 'bold' }}>
+                <Paper elevation={3} sx={{ p: 3, borderRadius: '12px', mt: 4, height: '450px', overflow: 'hidden' }}>
+                    <Typography variant="h5" sx={{ mb: 2, fontWeight: 'bold', color: '#1976D2' }}>
                         Rapport du Gross
                     </Typography>
-
-                    {reportLoading ? (
-                        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100px' }}>
-                            <CircularProgress />
+                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+                        <Button
+                            variant="contained"
+                            color="primary"
+                            onClick={handlePrint}
+                            sx={{ fontWeight: 'bold' }}
+                        >
+                            Imprimer le Rapport
+                        </Button>
+                    </Box>
+                    
+                    <PerfectScrollbar
+                        options={{ suppressScrollX: true }}
+                        style={{ height: '350px', paddingRight: '16px' }}
+                    >
+                        <Box ref={reportRef}>
+                            {reportLoading ? (
+                                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '150px' }}>
+                                    <CircularProgress />
+                                </Box>
+                            ) : (
+                                reportData ? (
+                                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                        <Card elevation={2} sx={{ mb: 2 }}>
+                                            <CardContent>
+                                                <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                                                    Rapport par Article
+                                                </Typography>
+                                                <List>
+                                                    {reportData.ItemReport.map((item, index) => (
+                                                        <Box key={index}>
+                                                            <ListItem>
+                                                                <ListItemText
+                                                                    primary={`Article: ${item._id.ItemName}`}
+                                                                    secondary={
+                                                                        <>
+                                                                            <Typography>Quantité: {item.totalCount}</Typography>
+                                                                            <Typography>Prix Total: {item.ItemPrice.toFixed(2)} CFA</Typography>
+                                                                            <Typography>Pourcentage des Ventes: {item.CalculatedPrice.toFixed(2)}%</Typography>
+                                                                            <Typography>Pourcentage de la Quantité: {item.PercentageCount.toFixed(2)}%</Typography>
+                                                                        </>
+                                                                    }
+                                                                />
+                                                            </ListItem>
+                                                            <Divider />
+                                                        </Box>
+                                                    ))}
+                                                </List>
+                                            </CardContent>
+                                        </Card>
+                                    </Box>
+                                ) : (
+                                    <Typography variant="body1" color="textSecondary">
+                                        Aucune donnée de rapport disponible.
+                                    </Typography>
+                                )
+                            )}
                         </Box>
-                    ) : (
-                        reportData ? (
-                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                                {/* Report by Items */}
-                                <Card elevation={2}>
-                                    <CardContent>
-                                        <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
-                                            Rapport par Article
-                                        </Typography>
-                                        <List>
-                                            {reportData.ItemReport.map((item, index) => (
-                                                <Box key={index}>
-                                                    <ListItem>
-                                                        <ListItemText
-                                                            primary={`Article: ${item._id.ItemName}`}
-                                                            secondary={
-                                                                <>
-                                                                    <Typography>Quantité: {item.totalCount}</Typography>
-                                                                    <Typography>Prix Total: {item.ItemPrice.toFixed(2)} CFA</Typography>
-                                                                    <Typography>Pourcentage des Ventes: {item.CalculatedPrice.toFixed(2)}%</Typography>
-                                                                    <Typography>Pourcentage de la Quantité: {item.PercentageCount.toFixed(2)}%</Typography>
-                                                                </>
-                                                            }
-                                                        />
-                                                    </ListItem>
-                                                    <Divider />
-                                                </Box>
-                                            ))}
-                                        </List>
-                                    </CardContent>
-                                </Card>
-                                
-                                {/* Add more sections for CategoryReport and TypeReport as needed */}
-                            </Box>
-                        ) : (
-                            <Typography variant="body1" color="textSecondary">
-                                Aucune donnée de rapport disponible.
-                            </Typography>
-                        )
-                    )}
+                    </PerfectScrollbar>
                 </Paper>
             )}
 
             <Dialog open={openDialog} onClose={() => { setOpenDialog(false); setError(null); }} maxWidth="xs">
-                <DialogTitle>Ajouter un Fonds de Caisse</DialogTitle>
+                <DialogTitle sx={{ textAlign: 'center', fontWeight: 'bold' }}>Ajouter un Fonds de Caisse</DialogTitle>
                 <DialogContent>
                     <Box
                         sx={{
                             textAlign: 'center',
-                            mb: 2,
+                            mb: 3,
                             p: 1,
-                            fontSize: '1.5rem',
+                            fontSize: '2rem',
                             fontWeight: 'bold',
                             border: '1px solid #ddd',
                             borderRadius: '4px',
@@ -246,14 +274,14 @@ const GrossPage = () => {
                     >
                         {formatAmount(openingBalance) || '0'}
                     </Box>
-                    <Grid container spacing={1}>
-                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, '00', 0].map((num, index) => (
+                    <Grid container spacing={2}>
+                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 0, '00', '000'].map((num, index) => (
                             <Grid item xs={4} key={index}>
                                 <Button
                                     variant="outlined"
                                     fullWidth
                                     onClick={() => handleKeyPress(num.toString())}
-                                    sx={{ fontSize: '1.8rem', padding: '15px', minWidth: '60px', fontWeight: 'bold' }}
+                                    sx={{ fontSize: '1.8rem', py: 2, fontWeight: 'bold' }}
                                 >
                                     {num}
                                 </Button>
@@ -264,7 +292,7 @@ const GrossPage = () => {
                                 variant="outlined"
                                 fullWidth
                                 onClick={() => handleKeyPress('clear')}
-                                sx={{ fontSize: '1.8rem', padding: '15px', minWidth: '60px', color: 'red', fontWeight: 'bold' }}
+                                sx={{ fontSize: '1.8rem', py: 2, color: 'red', fontWeight: 'bold' }}
                             >
                                 C
                             </Button>
@@ -274,18 +302,18 @@ const GrossPage = () => {
                                 variant="outlined"
                                 fullWidth
                                 onClick={() => handleKeyPress('delete')}
-                                sx={{ fontSize: '1.8rem', padding: '15px', minWidth: '60px', color: 'red', fontWeight: 'bold' }}
+                                sx={{ fontSize: '1.8rem', py: 2, color: 'red', fontWeight: 'bold' }}
                             >
                                 &larr;
                             </Button>
                         </Grid>
                     </Grid>
                 </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => { setOpenDialog(false); setError(null); }} color="secondary">
+                <DialogActions sx={{ justifyContent: 'space-around', py: 2 }}>
+                    <Button onClick={() => { setOpenDialog(false); setError(null); }} color="secondary" sx={{ fontWeight: 'bold' }}>
                         Annuler
                     </Button>
-                    <Button onClick={handleCreateGross} color="primary" variant="contained">
+                    <Button onClick={handleCreateGross} color="primary" variant="contained" sx={{ fontWeight: 'bold' }}>
                         Confirmer
                     </Button>
                 </DialogActions>

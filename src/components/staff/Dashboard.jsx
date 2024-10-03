@@ -9,7 +9,7 @@ import {
     Stack,
 } from '@mui/material';
 import AddShoppingCartIcon from '@mui/icons-material/AddShoppingCart';
-import DeliveryDiningIcon from '@mui/icons-material/DeliveryDining'; // Import a delivery icon
+import DeliveryDiningIcon from '@mui/icons-material/DeliveryDining';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import PaymentIcon from '@mui/icons-material/Payment';
 import { useNavigate } from 'react-router-dom';
@@ -22,8 +22,10 @@ const TOTAL_TABLES = 18;
 
 const Dashboard = () => {
     const [pendingOrders, setPendingOrders] = useState([]);
+    const [tableNumber, setTableNumber] = useState(''); // Local state for tableNumber
     const navigate = useNavigate();
-    const { setSelectedOrder } = useOrder();
+    const { setSelectedOrder } = useOrder(); // No setTableNumber needed here
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const fetchPendingOrders = async () => {
@@ -43,19 +45,22 @@ const Dashboard = () => {
     const handleTableClick = (tableNumber) => {
         const existingOrder = pendingOrders.find(order => order.TableNumber === tableNumber.toString());
         if (existingOrder) {
-            setSelectedOrder(existingOrder);
+            setSelectedOrder({
+                ...existingOrder,
+                TableNumber: tableNumber.toString(), // Ensure TableNumber is set
+            });
             navigate('/staff/order', { state: { orderNumber: existingOrder.OrderNumber } });
         } else {
             const newOrder = {
                 Type: 'Dine In',
-                TableNumber: tableNumber.toString(),
+                TableNumber: tableNumber.toString(), // Ensure TableNumber is set
                 Items: [],
             };
             setSelectedOrder(newOrder);
             navigate('/staff/order');
         }
     };
-
+    
     const handleTakeawayClick = () => {
         const takeawayOrder = {
             Type: 'TakeAway',
@@ -65,7 +70,6 @@ const Dashboard = () => {
         navigate('/staff/order');
     };
 
-    // New handler for "Delivery"
     const handleDeliveryClick = () => {
         const deliveryOrder = {
             Type: 'Delivery',
@@ -76,6 +80,7 @@ const Dashboard = () => {
     };
 
     const handleOrderClick = (order) => {
+        setTableNumber(order.TableNumber); // Set table number from the order
         setSelectedOrder(order);
         navigate('/staff/order', { state: { orderNumber: order.OrderNumber } });
     };
@@ -102,12 +107,12 @@ const Dashboard = () => {
     return (
         <Container maxWidth="xl" sx={{ height: '95vh', padding: 2, overflow: 'hidden', backgroundColor: '#f9f9f9' }}>
             <Typography variant="h4" sx={{ mb: 4, textAlign: 'center', fontWeight: 'bold', color: '#333' }}>
-                Tableau de bord - Statut des tables & Commandes en attente
+                Tableau de bord
             </Typography>
 
             <Grid container spacing={3} sx={{ height: 'calc(100% - 64px)' }}>
                 {/* Table Status Section */}
-                <Grid item xs={12} md={8} sx={{ height: '100%' }}>
+                <Grid item xs={12} md={5} sx={{ height: '100%' }}>
                     <Paper
                         sx={{
                             height: '100%',
@@ -122,7 +127,7 @@ const Dashboard = () => {
                             Statut des tables
                         </Typography>
                         <PerfectScrollbar style={{ flex: 1 }}>
-                            <Grid container spacing={2} columns={5} sx={{ padding: 3 }}>
+                            <Grid container spacing={2} columns={4} sx={{ padding: 3 }}>
                                 {[...Array(TOTAL_TABLES)].map((_, index) => {
                                     const tableNumber = index + 1;
                                     const occupied = isTableOccupied(tableNumber);
@@ -164,7 +169,7 @@ const Dashboard = () => {
                 </Grid>
 
                 {/* Pending Orders & Takeaway Button */}
-                <Grid item xs={12} md={4} sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                <Grid item xs={12} md={7} sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
                     <Paper
                         sx={{
                             flexGrow: 1,
