@@ -176,6 +176,10 @@ const Order = () => {
         fetchIngredients();
     }, []);
 
+    useEffect(() => {
+        console.log('Order component re-rendered', { tableNumber });
+    }, [tableNumber]);
+    
     if (!isAccessAllowed) {
         return (
             <Container>
@@ -203,16 +207,26 @@ const Order = () => {
     const handleTableNumberSelect = (num) => setTableNumber(num);
 
     const handleQuantityChange = (item, type) => {
-        setCart(
-            cart.map((cartItem) =>
-                cartItem._id === item._id &&
-                JSON.stringify(cartItem.removals) === JSON.stringify(item.removals) &&
-                JSON.stringify(cartItem.addOns) === JSON.stringify(item.addOns)
-                    ? { ...cartItem, quantity: type === 'increase' ? cartItem.quantity + 1 : cartItem.quantity - 1 }
-                    : cartItem
-            )
+        setCart((prevCart) =>
+            prevCart.map((cartItem) => {
+                // Check if the item matches based on _id, removals, and addOns
+                const isSameItem =
+                    cartItem._id === item._id &&
+                    JSON.stringify(cartItem.removals) === JSON.stringify(item.removals) &&
+                    JSON.stringify(cartItem.addOns) === JSON.stringify(item.addOns);
+    
+                if (isSameItem) {
+                    return {
+                        ...cartItem,
+                        quantity: type === 'increase' ? cartItem.quantity + 1 : Math.max(1, cartItem.quantity - 1), // Prevent quantity from going below 1
+                    };
+                }
+    
+                return cartItem; // Return the unchanged item
+            })
         );
     };
+    
 
     const toggleRemoveIngredient = (ingredient) => {
         setRemovals((prev) =>
@@ -250,11 +264,12 @@ const Order = () => {
     const handlePaymentMethodChange = async (method) => {
         try {
             setPaymentMethod(method);
-    
-            // Determine status based on payment method
+            
             const status = method === 'Pay Later' ? 'Pending' : 'Done';
     
-            // Construct the order payload
+            // Debugging: Check table number and payload
+            console.log('Table Number:', tableNumber);
+            
             const payload = {
                 Status: status,
                 Items: cart.map((item) => ({
@@ -269,64 +284,34 @@ const Order = () => {
                     Removals: item.removals || [],
                     AddOns: item.addOns || [],
                 })),
-                TableNumber: orderType === 'Dine In' ? tableNumber.toString() : '0',
+                TableNumber:  (tableNumber && !isNaN(tableNumber)) ? tableNumber.toString() : 'N/A',
                 DeliveryCharge: orderType === 'Delivery' ? parseFloat(deliveryCharge) : 0,
             };
     
-            // If orderNumber exists, update the order
+            console.log('Payload:', payload);
+            console.log("order type: ",orderType )
             if (orderNumber) {
-                console.log(payload.TableNumber)
+                // Update existing order
                 const updateResponse = await axios.put(
                     `${process.env.REACT_APP_API_URL}/Order/UpdateOrderByOrderNumber/${orderNumber}`,
                     payload
                 );
-    
-                if (updateResponse.status === 200) {
-                    toast.success('Order updated successfully!', {
-                        position: "bottom-center",
-                        autoClose: 5000,
-                        hideProgressBar: false,
-                        closeOnClick: true,
-                        pauseOnHover: true,
-                        draggable: true,
-                    });
-                }
             } else {
-                // Otherwise, create a new order
+                // Create new order
                 const createResponse = await axios.post(
                     `${process.env.REACT_APP_API_URL}/Order/CreateOrder`,
                     payload
                 );
-    
-                if (createResponse.status === 200) {
-                    toast.success('Order created successfully!', {
-                        position: "bottom-center",
-                        autoClose: 5000,
-                        hideProgressBar: false,
-                        closeOnClick: true,
-                        pauseOnHover: true,
-                        draggable: true,
-                    });
-                }
             }
     
             // Redirect to the dashboard
             navigate('/staff/dashboard');
-    
             setOpenPaymentDialog(false);
         } catch (error) {
             console.error('Error with payment method:', error);
-            toast.error('An error occurred while processing the order.', {
-                position: "bottom-center",
-                autoClose: 5000,
-                hideProgressBar: false,
-                closeOnClick: true,
-                pauseOnHover: true,
-                draggable: true,
-            });
         }
     };
-
+    
     const handleItemClick = (item) => {
         setSelectedItem({ 
             ...item, 
@@ -345,22 +330,22 @@ const Order = () => {
             removals,
             addOns,
         };
-    
+
         const existingItemIndex = cart.findIndex(
             (cartItem) =>
                 cartItem._id === updatedItem._id &&
                 JSON.stringify(cartItem.removals) === JSON.stringify(updatedItem.removals) &&
                 JSON.stringify(cartItem.addOns) === JSON.stringify(updatedItem.addOns)
         );
-    
+
         if (existingItemIndex > -1) {
             const updatedCart = [...cart];
-            updatedCart[existingItemIndex].quantity += 1;
+            updatedCart[existingItemIndex].quantity += 1; // Increment the quantity by 1
             setCart(updatedCart);
         } else {
-            setCart([...cart, updatedItem]);
+            setCart([...cart, { ...updatedItem, quantity: 1 }]); // Start the quantity at 1
         }
-    
+
         setOpenDialog(false);
     };
 

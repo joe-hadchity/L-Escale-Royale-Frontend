@@ -48,7 +48,9 @@ const Dashboard = () => {
             setSelectedOrder({
                 ...existingOrder,
                 TableNumber: tableNumber.toString(), // Ensure TableNumber is set
+                
             });
+            console.log(tableNumber)
             navigate('/staff/order', { state: { orderNumber: existingOrder.OrderNumber } });
         } else {
             const newOrder = {
