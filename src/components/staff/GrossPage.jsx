@@ -37,18 +37,27 @@ const GrossPage = () => {
 
     const fetchGrossDetails = async () => {
         try {
+            console.log('Fetching Gross details...');
             const response = await axios.get(`${process.env.REACT_APP_API_URL}/Gross/GetLatestGross`);
+            console.log('Response:', response.data);
+            
             const latestGross = response.data;
 
             if (latestGross) {
                 setGrossStatus(latestGross.Status);
-                setGrossTotal(latestGross.TotalGross || 0);
+                
+                // Check if "TotalGross" exists, otherwise use "OpeningBalance"
+                setGrossTotal(latestGross.TotalGross || latestGross.OpeningBalance || 0);
             } else {
                 setGrossStatus(null);
                 setGrossTotal(0);
             }
         } catch (error) {
             console.error('Error fetching Gross details:', error);
+            if (error.response) {
+                console.error('Status:', error.response.status);
+                console.error('Data:', error.response.data);
+            }
             setError('Failed to fetch Gross details.');
         } finally {
             setLoading(false);
@@ -58,10 +67,16 @@ const GrossPage = () => {
     const fetchReport = async () => {
         setReportLoading(true);
         try {
+            console.log('Fetching Gross report...');
             const response = await axios.post(`${process.env.REACT_APP_API_URL}/Report/CreateReport`);
+            console.log('Report Response:', response.data);
             setReportData(response.data);
         } catch (error) {
             console.error('Error fetching report data:', error);
+            if (error.response) {
+                console.error('Status:', error.response.status);
+                console.error('Data:', error.response.data);
+            }
             setError('Failed to fetch report data. Please try again later.');
         } finally {
             setReportLoading(false);
@@ -75,29 +90,48 @@ const GrossPage = () => {
 
     const handleCreateGross = async () => {
         try {
-            await axios.post(`${process.env.REACT_APP_API_URL}/Gross/CreateGross`, { Status: 'Open', OpeningBalance: parseFloat(openingBalance) || 0 });
+            console.log('Creating a new Gross with Opening Balance:', openingBalance);
+            const payload = { Status: 'Open', OpeningBalance: parseFloat(openingBalance) || 0 };
+            console.log('Payload:', payload);
+
+            const response = await axios.post(`${process.env.REACT_APP_API_URL}/Gross/CreateGross`, payload);
+            console.log('Create Gross Response:', response.data);
+            
             setGrossStatus('Open');
             setGrossTotal(parseFloat(openingBalance) || 0);
             setOpenDialog(false);
         } catch (error) {
             console.error('Error creating a new Gross:', error);
+            if (error.response) {
+                console.error('Status:', error.response.status);
+                console.error('Data:', error.response.data);
+            }
             setError('Failed to create a new Gross. Please try again.');
         }
     };
 
     const handleCloseGross = async () => {
         try {
+            console.log('Closing Gross...');
             const response = await axios.get(`${process.env.REACT_APP_API_URL}/Gross/GetLatestGross`);
+            console.log('Fetched Latest Gross:', response.data);
+
             const latestGross = response.data;
 
             if (latestGross) {
                 const grossNumber = latestGross.GrossNumber;
+                console.log(`Updating Gross status to 'Closed' for GrossNumber: ${grossNumber}`);
+                
                 await axios.put(`${process.env.REACT_APP_API_URL}/Gross/UpdateGrossByGrossNumber/${grossNumber}`, { Status: 'Closed' });
                 setGrossStatus('Closed');
                 fetchReport();
             }
         } catch (error) {
             console.error('Error closing the Gross:', error);
+            if (error.response) {
+                console.error('Status:', error.response.status);
+                console.error('Data:', error.response.data);
+            }
             setError('Failed to close the Gross. Please try again.');
         }
     };

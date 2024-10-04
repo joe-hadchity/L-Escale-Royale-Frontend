@@ -12,8 +12,15 @@ import {
   Paper,
   Typography,
   CircularProgress,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  List,
+  ListItem,
+  ListItemText
 } from '@mui/material';
 import axios from 'axios';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 
 const History = () => {
   const [history, setHistory] = useState([]);
@@ -34,39 +41,52 @@ const History = () => {
 
   // Fetch orders based on either order number or date
   const fetchFilteredHistory = async () => {
-    console.log('Fetching history...');
     try {
       setLoading(true);
       setError(null); // Reset any previous errors
 
       let apiUrl = `${process.env.REACT_APP_API_URL}/Order/GetOrdersinProcess`; // Default fallback
 
+      // Search by order number
       if (searchOrder) {
-        console.log(`Searching by order number: ${searchOrder}`);
         apiUrl = `${process.env.REACT_APP_API_URL}/Order/GetOrderByOrderNumber/${searchOrder}`;
-      } else if (searchDate) {
-        const formattedDate = formatDate(searchDate); // Format the date before sending
-        console.log(`Searching by date: ${formattedDate}`);
+      }
+      // Search by date
+      else if (searchDate) {
+        const formattedDate = formatDate(searchDate); // Format the date as dd/MM/yyyy
         apiUrl = `${process.env.REACT_APP_API_URL}/Order/GetOrderByDate?date=${formattedDate}`;
       } else {
-        console.log('No search criteria provided.');
-        setError('Please enter an order number or select a date to search.');
+        setError('Veuillez entrer un numéro de commande ou sélectionner une date pour rechercher.');
         setLoading(false);
         return;
       }
 
-      console.log(`API URL: ${apiUrl}`);
+      // Make the API request with a timeout of 10 seconds
+      const source = axios.CancelToken.source();
+      const timeout = setTimeout(() => {
+        source.cancel('La requête a expiré. Veuillez réessayer.');
+      }, 10000);
 
-      // Making API request
-      const response = await axios.get(apiUrl);
-      console.log('API response:', response.data);
+      const response = await axios.get(apiUrl, { cancelToken: source.token });
+      clearTimeout(timeout);
 
       // Handle both array and single object response
       const responseData = Array.isArray(response.data) ? response.data : [response.data];
-      setHistory(responseData);
+      
+      // If no data is found, set an appropriate error message
+      if (responseData.length === 0) {
+        setError('Aucune commande trouvée pour les critères donnés.');
+      } else {
+        setHistory(responseData);
+      }
     } catch (error) {
-      console.error('Error fetching history:', error);
-      setError('Failed to fetch orders. Please try again.');
+      if (axios.isCancel(error)) {
+        console.error('Request canceled:', error.message);
+        setError('La requête a expiré. Veuillez réessayer.');
+      } else {
+        console.error('Erreur lors de la récupération de l\'historique:', error);
+        setError('Échec de la récupération des commandes. Veuillez réessayer.');
+      }
     } finally {
       setLoading(false);
     }
@@ -114,26 +134,26 @@ const History = () => {
       )}
 
       {/* History Table */}
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>#</TableCell>
-              <TableCell>Créé par</TableCell>
-              <TableCell>Date de commande</TableCell>
-              <TableCell>Numéro de commande</TableCell>
-              <TableCell>Type</TableCell>
-              <TableCell>Statut</TableCell>
-              <TableCell>Numéro de table</TableCell>
-              <TableCell>Frais de livraison</TableCell>
-              <TableCell>Emplacement</TableCell>
-              <TableCell>Prix total (CFA)</TableCell>
-              <TableCell>Articles</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {history.length > 0 ? (
-              history.map((order, index) => (
+      {!loading && history.length > 0 && (
+        <TableContainer component={Paper}>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>#</TableCell>
+                <TableCell>Créé par</TableCell>
+                <TableCell>Date de commande</TableCell>
+                <TableCell>Numéro de commande</TableCell>
+                <TableCell>Type</TableCell>
+                <TableCell>Statut</TableCell>
+                <TableCell>Numéro de table</TableCell>
+                <TableCell>Frais de livraison</TableCell>
+                <TableCell>Emplacement</TableCell>
+                <TableCell>Prix total (CFA)</TableCell>
+                <TableCell>Articles</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {history.map((order, index) => (
                 <TableRow key={index}>
                   <TableCell>{index + 1}</TableCell>
                   <TableCell>{order.Created_by || 'N/A'}</TableCell>
@@ -150,30 +170,42 @@ const History = () => {
                     {order.TotalPrice ? `${order.TotalPrice.toFixed(2)} ` : 'N/A'}
                   </TableCell>
                   <TableCell>
+                    {/* Accordion for displaying items */}
                     {order.Items && order.Items.length > 0 ? (
-                      <ul>
-                        {order.Items.map((item, i) => (
-                          <li key={i}>
-                            {item.Quantity}
-                          </li>
-                        ))}
-                      </ul>
+                      <Accordion>
+                        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                          <Typography>Voir les articles ({order.Items.length})</Typography>
+                        </AccordionSummary>
+                        <AccordionDetails>
+                          <List>
+                            {order.Items.map((item, i) => (
+                              <ListItem key={i}>
+                                <ListItemText
+                                  primary={`Nom: ${item.Name || 'Nom indisponible'}`}
+                                  secondary={`Quantité: ${item.Quantity}`}
+                                />
+                              </ListItem>
+                            ))}
+                          </List>
+                        </AccordionDetails>
+                      </Accordion>
                     ) : (
-                      'No items'
+                      'Aucun article'
                     )}
                   </TableCell>
                 </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={11} align="center">
-                  Aucune entrée trouvée
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
+
+      {/* Display message if no history found */}
+      {!loading && history.length === 0 && !error && (
+        <Typography variant="body1" color="textSecondary" gutterBottom>
+          Aucun résultat trouvé.
+        </Typography>
+      )}
     </Box>
   );
 };

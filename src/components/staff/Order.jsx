@@ -265,7 +265,7 @@ const Order = () => {
         try {
             setPaymentMethod(method);
             
-            const status = method === 'Pay Later' ? 'Pending' : 'Done';
+            const status = method === 'Pay Later' ? 'Pay Later' : 'Pending';
     
             // Debugging: Check table number and payload
             console.log('Table Number:', tableNumber);
@@ -302,6 +302,7 @@ const Order = () => {
                     `${process.env.REACT_APP_API_URL}/Order/CreateOrder`,
                     payload
                 );
+                console.log(payload)
             }
     
             // Redirect to the dashboard
@@ -375,24 +376,64 @@ const Order = () => {
             ) : (
                 <Grid container spacing={0} sx={{ height: '100vh', overflow: 'hidden' }}>
                     {/* Categories Section */}
-                    <Grid item xs={1.5} sx={{ backgroundColor: '#f0f0f0', padding: 1, boxShadow: 3, borderRight: '1px solid #e0e0e0' }}>
-                        <Typography variant="h6" sx={{ mb: 1, fontWeight: 'bold', textAlign: 'center' }}>
-                            Categories
-                        </Typography>
-                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, overflowY: 'auto', height: '90vh' }}>
-                            {categories.map((category) => (
-                                <Button
-                                    key={category._id || category.Name}
-                                    variant={selectedCategory === category.Name ? 'contained' : 'outlined'}
-                                    onClick={() => setSelectedCategory(category.Name)}
-                                    fullWidth
-                                    sx={{ padding: '10px', fontSize: '14px', fontWeight: '500', borderRadius: '8px' }}
-                                >
-                                    {category.Name}
-                                </Button>
-                            ))}
-                        </Box>
-                    </Grid>
+                    <Grid
+  item
+  xs={1.5}
+  sx={{
+    backgroundColor: '#f0f0f0',
+    padding: 1,
+    boxShadow: 3,
+    borderRight: '1px solid #e0e0e0',
+  }}
+>
+  <Typography
+    variant="h6"
+    sx={{ mb: 1, fontWeight: 'bold', textAlign: 'center' }}
+  >
+    Categories
+  </Typography>
+  <Box
+    sx={{
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 2,
+      overflowY: 'auto',
+      height: '90vh',
+      // Scrollbar styling
+      '&::-webkit-scrollbar': {
+        width: '4px',
+      },
+      '&::-webkit-scrollbar-track': {
+        backgroundColor: '#f0f0f0',
+        borderRadius: '10px',
+      },
+      '&::-webkit-scrollbar-thumb': {
+        backgroundColor: '#c0c0c0',
+        borderRadius: '10px',
+      },
+      '&::-webkit-scrollbar-thumb:hover': {
+        backgroundColor: '#a0a0a0',
+      },
+    }}
+  >
+    {categories.map((category) => (
+      <Button
+        key={category._id || category.Name}
+        variant={selectedCategory === category.Name ? 'contained' : 'outlined'}
+        onClick={() => setSelectedCategory(category.Name)}
+        fullWidth
+        sx={{
+          padding: '10px',
+          fontSize: '14px',
+          fontWeight: '500',
+          borderRadius: '8px',
+        }}
+      >
+        {category.Name}
+      </Button>
+    ))}
+  </Box>
+</Grid>
 
                     {/* Items Section */}
                     <Grid item xs={6.5} sx={{ padding: 1 }}>
@@ -410,67 +451,76 @@ const Order = () => {
                             </ToggleButtonGroup>
                         </Box>
 
-                        {/* Table Number Selection for Dine In */}
-                        {orderType === 'Dine In' && (
-                            <Box sx={{ display: 'flex', gap: 1, overflowX: 'auto', mb: 2, padding: '4px', justifyContent: 'center' }}>
-                                {tableNumbers.map((num) => (
-                                    <Button
-                                        key={`table-${num}`}
-                                        variant={tableNumber === num ? 'contained' : 'outlined'}
-                                        onClick={() => handleTableNumberSelect(num)}
-                                        sx={{ minWidth: '40px', fontSize: '12px', padding: '6px 8px' }}
-                                    >
-                                        {num}
-                                    </Button>
-                                ))}
-                            </Box>
-                        )}
+                       
 
-                        {/* Delivery Location Input */}
                         {orderType === 'Delivery' && (
-                            <Box sx={{ mb: 2 }}>
-                                <TextField
-                                    label="Delivery Location"
-                                    fullWidth
-                                    variant="outlined"
-                                    value={deliveryLocation}
-                                    onFocus={() => setKeyboardVisible(true)}
-                                    onChange={(e) => handleDeliveryLocationChange(e.target.value)}
-                                />
-                                {keyboardVisible && (
-                                    <Box
-                                        sx={{
-                                            position: 'fixed',
-                                            top: 0,
-                                            left: 0,
-                                            width: '100%',
-                                            height: '100%',
-                                            zIndex: 1500,
-                                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                                        }}
-                                        onClick={handleOutsideClick}
-                                    >
-                                        <Box
-                                            sx={{
-                                                position: 'absolute',
-                                                bottom: 0,
-                                                width: '100%',
-                                                backgroundColor: '#fff',
-                                                padding: '20px',
-                                                zIndex: 1600,
-                                            }}
-                                        >
-                                            <Keyboard
-                                                onChange={(value) => handleKeyboardChange(value)}
-                                                onKeyPress={(button) => button === '{enter}' && setKeyboardVisible(false)}
-                                                theme="hg-theme-default"
-                                                layoutName="default"
-                                            />
-                                        </Box>
-                                    </Box>
-                                )}
-                            </Box>
-                        )}
+    <Box sx={{ mb: 2 }}>
+        {/* Delivery Location Input */}
+        <TextField
+            label="Delivery Location and Phone Number"
+            fullWidth
+            variant="outlined"
+            value={deliveryLocation}
+            onFocus={() => {
+                setKeyboardVisible(true);
+                setKeyboardField('location'); // Indicate which field is being edited
+            }}
+            onChange={(e) => handleDeliveryLocationChange(e.target.value)}
+        />
+        
+        {/* Delivery Charge Input */}
+        <TextField
+            label="Delivery Charge"
+            fullWidth
+            variant="outlined"
+            value={deliveryCharge}
+            onFocus={() => {
+                setKeyboardVisible(true);
+                setKeyboardField('charge'); // Indicate which field is being edited
+            }}
+            onChange={(e) => setDeliveryCharge(e.target.value)}
+            sx={{ mt: 2 }}
+        />
+
+        {/* On-Screen Keyboard */}
+        {keyboardVisible && (
+            <Box
+                sx={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '100%',
+                    zIndex: 2500,
+                    backgroundColor: 'rgba(0, 0, 0, 0.)',
+                }}
+                onClick={handleOutsideClick}
+            >
+                <Box
+                    sx={{
+                        position: 'absolute',
+                        bottom: 0,
+                        width: '100%',
+                        backgroundColor: '#fff',
+                        padding: '20px',
+                        zIndex: 1600,
+                    }}
+                    onClick={(e) => e.stopPropagation()} // Prevent hiding keyboard when clicking on it
+                >
+                    <Keyboard
+                        onChange={(value) => handleKeyboardChange(value)}
+                        onKeyPress={(button) => {
+                            if (button === '{enter}') setKeyboardVisible(false);
+                        }}
+                        theme="hg-theme-default"
+                        layoutName="default"
+                    />
+                </Box>
+            </Box>
+        )}
+    </Box>
+)}
+
 
                         <Typography variant="h6" sx={{ mb: 1, fontWeight: 'bold' }}>
                             Select an Item
@@ -508,98 +558,103 @@ const Order = () => {
                     </Grid>
 
                     {/* Cart Section */}
-                    <Grid item xs={4} sx={{ backgroundColor: '#f0f0f0', padding: 2, boxShadow: 3, borderLeft: '1px solid #e0e0e0' }}>
-                        <Typography variant="h6" sx={{ mb: 1, fontWeight: 'bold', textAlign: 'center' }}>
-                            Cart
-                        </Typography>
+<Grid item xs={4} sx={{ backgroundColor: '#f0f0f0', padding: 2, boxShadow: 3, borderLeft: '1px solid #e0e0e0' }}>
+    <Typography variant="h6" sx={{ mb: 1, fontWeight: 'bold', textAlign: 'center' }}>
+        Cart
+    </Typography>
 
-                        {/* Order Information */}
-                        <Box sx={{ marginBottom: 2 }}>
-                            <Typography variant="body1" sx={{ fontWeight: 'bold', textAlign: 'center', fontSize: '1rem', mb: 1 }}>
-                                Order N°{orderNumber}
-                            </Typography>
-                            {orderType === 'Dine In' && (
-                                <Typography variant="body1" sx={{ fontWeight: 'bold', textAlign: 'center', fontSize: '1rem' }}>
-                                    Table: {tableNumber}
+    {/* Order Information */}
+    <Box sx={{ marginBottom: 2 }}>
+        <Typography variant="body1" sx={{ fontWeight: 'bold', textAlign: 'center', fontSize: '1rem', mb: 1 }}>
+            Order N°{orderNumber}
+        </Typography>
+        {orderType === 'Dine In' && (
+            <Typography variant="body1" sx={{ fontWeight: 'bold', textAlign: 'center', fontSize: '1rem' }}>
+                Table: {tableNumber}
+            </Typography>
+        )}
+    </Box>
+
+    {cart.length === 0 ? (
+        <Typography color="textSecondary" textAlign="center">
+            Your cart is empty
+        </Typography>
+    ) : (
+        <Box sx={{ maxHeight: '65vh', overflowY: 'auto', padding: '8px' }}>
+            <List dense>
+                {cart.map((cartItem, index) => (
+                    <React.Fragment key={`cart-item-${cartItem._id || index}`}>
+                        <ListItem
+                            secondaryAction={
+                                <IconButton edge="end" aria-label="delete" onClick={() => removeFromCart(cartItem)}>
+                                    <Delete />
+                                </IconButton>
+                            }
+                            sx={{ alignItems: 'flex-start', marginBottom: 1, borderBottom: '1px solid #e0e0e0' }}
+                        >
+                            <Box sx={{ flex: 1 }}>
+                                <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
+                                    {cartItem.Name}
                                 </Typography>
-                            )}
-                        </Box>
+                                {/* Display the type of the item (Dine In or TakeAway) */}
+                                <Typography variant="body2" color="textSecondary">
+                                    Type: {cartItem.TypeItem || orderType}
+                                </Typography>
+                                <Typography variant="body2">
+                                    {orderType === 'Dine In' ? cartItem.price : cartItem.pricedel} CFA x {cartItem.quantity}
+                                </Typography>
 
-                        {cart.length === 0 ? (
-                            <Typography color="textSecondary" textAlign="center">
-                                Your cart is empty
-                            </Typography>
-                        ) : (
-                            <Box sx={{ maxHeight: '65vh', overflowY: 'auto', padding: '8px' }}>
-                                <List dense>
-                                    {cart.map((cartItem, index) => (
-                                        <React.Fragment key={`cart-item-${cartItem._id || index}`}>
-                                            <ListItem
-                                                secondaryAction={
-                                                    <IconButton edge="end" aria-label="delete" onClick={() => removeFromCart(cartItem)}>
-                                                        <Delete />
-                                                    </IconButton>
-                                                }
-                                                sx={{ alignItems: 'flex-start', marginBottom: 1, borderBottom: '1px solid #e0e0e0' }}
-                                            >
-                                                <Box sx={{ flex: 1 }}>
-                                                    <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
-                                                        {cartItem.Name}
-                                                    </Typography>
-                                                    <Typography variant="body2">
-                                                        {orderType === 'Dine In' ? cartItem.price : cartItem.pricedel} CFA x {cartItem.quantity}
-                                                    </Typography>
+                                {/* Display Removals */}
+                                {cartItem.removals && cartItem.removals.length > 0 && (
+                                    <Typography variant="body2" color="error">
+                                        Removals: {cartItem.removals.map((rem) => rem.Name).join(', ')}
+                                    </Typography>
+                                )}
 
-                                                    {/* Display Removals */}
-                                                    {cartItem.removals && cartItem.removals.length > 0 && (
-                                                        <Typography variant="body2" color="error">
-                                                            Removals: {cartItem.removals.map((rem) => rem.Name).join(', ')}
-                                                        </Typography>
-                                                    )}
-
-                                                    {/* Display Add-ons */}
-                                                    {cartItem.addOns && cartItem.addOns.length > 0 && (
-                                                        <Typography variant="body2" color="primary">
-                                                            Add-ons: {cartItem.addOns.map((add) => add.Name).join(', ')}
-                                                        </Typography>
-                                                    )}
-                                                </Box>
-
-                                                {/* Quantity Controls */}
-                                                <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-                                                    <IconButton
-                                                        aria-label="decrease"
-                                                        onClick={() => handleQuantityChange(cartItem, 'decrease')}
-                                                        disabled={cartItem.quantity <= 1}
-                                                    >
-                                                        <RemoveCircle />
-                                                    </IconButton>
-                                                    <Typography variant="body1" sx={{ mx: 1 }}>
-                                                        {cartItem.quantity}
-                                                    </Typography>
-                                                    <IconButton aria-label="increase" onClick={() => handleQuantityChange(cartItem, 'increase')}>
-                                                        <AddCircle />
-                                                    </IconButton>
-                                                </Box>
-                                            </ListItem>
-                                            <Divider />
-                                        </React.Fragment>
-                                    ))}
-                                </List>
+                                {/* Display Add-ons */}
+                                {cartItem.addOns && cartItem.addOns.length > 0 && (
+                                    <Typography variant="body2" color="primary">
+                                        Add-ons: {cartItem.addOns.map((add) => add.Name).join(', ')}
+                                    </Typography>
+                                )}
                             </Box>
-                        )}
-                        {cart.length > 0 && (
-                            <Button
-                                variant="contained"
-                                color="primary"
-                                fullWidth
-                                sx={{ padding: '15px', mt: 3, fontWeight: 'bold', position: 'sticky', bottom: 0 }}
-                                onClick={handleValidateOrder}
-                            >
-                                Place Order
-                            </Button>
-                        )}
-                    </Grid>
+
+                            {/* Quantity Controls */}
+                            <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+                                <IconButton
+                                    aria-label="decrease"
+                                    onClick={() => handleQuantityChange(cartItem, 'decrease')}
+                                    disabled={cartItem.quantity <= 1}
+                                >
+                                    <RemoveCircle />
+                                </IconButton>
+                                <Typography variant="body1" sx={{ mx: 1 }}>
+                                    {cartItem.quantity}
+                                </Typography>
+                                <IconButton aria-label="increase" onClick={() => handleQuantityChange(cartItem, 'increase')}>
+                                    <AddCircle />
+                                </IconButton>
+                            </Box>
+                        </ListItem>
+                        <Divider />
+                    </React.Fragment>
+                ))}
+            </List>
+        </Box>
+    )}
+    {cart.length > 0 && (
+        <Button
+            variant="contained"
+            color="primary"
+            fullWidth
+            sx={{ padding: '15px', mt: 3, fontWeight: 'bold', position: 'sticky', bottom: 0 }}
+            onClick={handleValidateOrder}
+        >
+            Place Order
+        </Button>
+    )}
+</Grid>
+
                 </Grid>
             )}
             {/* Item Editing Modal */}
@@ -682,56 +737,75 @@ const Order = () => {
 
             {/* Payment Selection Modal */}
             <Dialog open={openPaymentDialog} onClose={() => setOpenPaymentDialog(false)} maxWidth="sm">
-                <DialogTitle sx={{ fontWeight: 'bold', textAlign: 'center' }}>Select Payment Method</DialogTitle>
-                <DialogContent dividers>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, padding: 2 }}>
-                        <Button
-                            variant="contained"
-                            color="primary"
-                            sx={{ padding: '20px', fontSize: '18px', fontWeight: 'bold', display: 'flex', justifyContent: 'flex-start', alignItems: 'center' }}
-                            onClick={() => handlePaymentMethodChange('Cash')}
-                            startIcon={<Money sx={{ fontSize: 30, marginRight: '10px' }} />}
-                        >
-                            Cash
-                        </Button>
+    <DialogTitle sx={{ fontWeight: 'bold', textAlign: 'center' }}>Select Payment Method</DialogTitle>
+    <DialogContent dividers>
+        {/* Subtitle for Guidance */}
+        <Typography variant="subtitle1" sx={{ textAlign: 'center', mb: 2 }}>
+            Choose a payment method to proceed with your order
+        </Typography>
+        
+        {/* Payment Method Options */}
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, padding: 2 }}>
+            <Button
+                variant="outlined"
+                color="primary"
+                sx={{ padding: '15px', fontSize: '16px', fontWeight: 'bold', justifyContent: 'center', alignItems: 'center' }}
+                onClick={() => handlePaymentMethodChange('Cash')}
+                startIcon={<Money sx={{ fontSize: 25, marginRight: '10px' }} />}
+            >
+                Pay with Cash
+            </Button>
 
-                        <Button
-                            variant="contained"
-                            color="secondary"
-                            sx={{ padding: '20px', fontSize: '18px', fontWeight: 'bold', display: 'flex', justifyContent: 'flex-start', alignItems: 'center' }}
-                            onClick={() => handlePaymentMethodChange('Card')}
-                            startIcon={<CreditCard sx={{ fontSize: 30, marginRight: '10px' }} />}
-                        >
-                            Card
-                        </Button>
+            <Button
+                variant="outlined"
+                color="secondary"
+                sx={{ padding: '15px', fontSize: '16px', fontWeight: 'bold', justifyContent: 'center', alignItems: 'center' }}
+                onClick={() => handlePaymentMethodChange('Card')}
+                startIcon={<CreditCard sx={{ fontSize: 25, marginRight: '10px' }} />}
+            >
+                Pay with Card
+            </Button>
 
-                        <Button
-                            variant="contained"
-                            color="success"
-                            sx={{ padding: '20px', fontSize: '18px', fontWeight: 'bold', display: 'flex', justifyContent: 'flex-start', alignItems: 'center' }}
-                            onClick={() => handlePaymentMethodChange('Airtel')}
-                            startIcon={<MobileFriendly sx={{ fontSize: 30, marginRight: '10px' }} />}
-                        >
-                            Airtel
-                        </Button>
+            <Button
+                variant="outlined"
+                color="success"
+                sx={{ padding: '15px', fontSize: '16px', fontWeight: 'bold', justifyContent: 'center', alignItems: 'center' }}
+                onClick={() => handlePaymentMethodChange('Airtel')}
+                startIcon={<MobileFriendly sx={{ fontSize: 25, marginRight: '10px' }} />}
+            >
+                Pay with Airtel
+            </Button>
 
-                        <Button
-                            variant="contained"
-                            color="warning"
-                            sx={{ padding: '20px', fontSize: '18px', fontWeight: 'bold', display: 'flex', justifyContent: 'flex-start', alignItems: 'center' }}
-                            onClick={() => handlePaymentMethodChange('Pay Later')}
-                            startIcon={<Replay sx={{ fontSize: 30, marginRight: '10px' }} />}
-                        >
-                            Pay Later
-                        </Button>
-                    </Box>
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setOpenPaymentDialog(false)} color="secondary" sx={{ fontWeight: 'bold' }}>
-                        Cancel
-                    </Button>
-                </DialogActions>
-            </Dialog>
+            <Button
+                variant="outlined"
+                color="warning"
+                sx={{ padding: '15px', fontSize: '16px', fontWeight: 'bold', justifyContent: 'center', alignItems: 'center' }}
+                onClick={() => handlePaymentMethodChange('Pay Later')}
+                startIcon={<Replay sx={{ fontSize: 25, marginRight: '10px' }} />}
+            >
+                Pay Later
+            </Button>
+        </Box>
+
+        {/* Proceed Button */}
+        <Box sx={{ textAlign: 'center', mt: 4 }}>
+            <Button
+                variant="contained"
+                color="primary"
+                sx={{ padding: '15px 30px', fontSize: '18px', fontWeight: 'bold', minWidth: '200px' }}
+                onClick={() => handlePaymentMethodChange('Proceed')}
+            >
+                Proceed
+            </Button>
+        </Box>
+    </DialogContent>
+    <DialogActions sx={{ justifyContent: 'center' }}>
+        <Button onClick={() => setOpenPaymentDialog(false)} color="secondary" sx={{ fontWeight: 'bold' }}>
+            Cancel
+        </Button>
+    </DialogActions>
+</Dialog>
+
         </Container>
     );
 };
