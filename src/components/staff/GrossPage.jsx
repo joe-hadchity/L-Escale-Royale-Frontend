@@ -26,6 +26,7 @@ import 'react-perfect-scrollbar/dist/css/styles.css';
 const GrossPage = () => {
     const [grossStatus, setGrossStatus] = useState(null);
     const [grossTotal, setGrossTotal] = useState(0);
+    const [cashGross, setCashGross] = useState(0);
     const [loading, setLoading] = useState(true);
     const [openDialog, setOpenDialog] = useState(false);
     const [openingBalance, setOpeningBalance] = useState('');
@@ -37,27 +38,19 @@ const GrossPage = () => {
 
     const fetchGrossDetails = async () => {
         try {
-            console.log('Fetching Gross details...');
             const response = await axios.get(`${process.env.REACT_APP_API_URL}/Gross/GetLatestGross`);
-            console.log('Response:', response.data);
-            
             const latestGross = response.data;
 
             if (latestGross) {
                 setGrossStatus(latestGross.Status);
-                
-                // Check if "TotalGross" exists, otherwise use "OpeningBalance"
                 setGrossTotal(latestGross.TotalGross || latestGross.OpeningBalance || 0);
+                setCashGross(latestGross.CashGross || 0);
             } else {
                 setGrossStatus(null);
                 setGrossTotal(0);
+                setCashGross(0);
             }
         } catch (error) {
-            console.error('Error fetching Gross details:', error);
-            if (error.response) {
-                console.error('Status:', error.response.status);
-                console.error('Data:', error.response.data);
-            }
             setError('Failed to fetch Gross details.');
         } finally {
             setLoading(false);
@@ -67,16 +60,9 @@ const GrossPage = () => {
     const fetchReport = async () => {
         setReportLoading(true);
         try {
-            console.log('Fetching Gross report...');
             const response = await axios.post(`${process.env.REACT_APP_API_URL}/Report/CreateReport`);
-            console.log('Report Response:', response.data);
             setReportData(response.data);
         } catch (error) {
-            console.error('Error fetching report data:', error);
-            if (error.response) {
-                console.error('Status:', error.response.status);
-                console.error('Data:', error.response.data);
-            }
             setError('Failed to fetch report data. Please try again later.');
         } finally {
             setReportLoading(false);
@@ -90,48 +76,28 @@ const GrossPage = () => {
 
     const handleCreateGross = async () => {
         try {
-            console.log('Creating a new Gross with Opening Balance:', openingBalance);
-            const payload = { Status: 'Open', OpeningBalance: parseFloat(openingBalance) || 0 };
-            console.log('Payload:', payload);
-
-            const response = await axios.post(`${process.env.REACT_APP_API_URL}/Gross/CreateGross`, payload);
-            console.log('Create Gross Response:', response.data);
+            const payload = { Status: 'Open', CashGross: parseFloat(openingBalance) || 0 };
+            await axios.post(`${process.env.REACT_APP_API_URL}/Gross/CreateGross`, payload);
             
-            setGrossStatus('Open');
-            setGrossTotal(parseFloat(openingBalance) || 0);
             setOpenDialog(false);
+            await fetchGrossDetails();
         } catch (error) {
-            console.error('Error creating a new Gross:', error);
-            if (error.response) {
-                console.error('Status:', error.response.status);
-                console.error('Data:', error.response.data);
-            }
             setError('Failed to create a new Gross. Please try again.');
         }
     };
 
     const handleCloseGross = async () => {
         try {
-            console.log('Closing Gross...');
             const response = await axios.get(`${process.env.REACT_APP_API_URL}/Gross/GetLatestGross`);
-            console.log('Fetched Latest Gross:', response.data);
-
             const latestGross = response.data;
 
             if (latestGross) {
                 const grossNumber = latestGross.GrossNumber;
-                console.log(`Updating Gross status to 'Closed' for GrossNumber: ${grossNumber}`);
-                
                 await axios.put(`${process.env.REACT_APP_API_URL}/Gross/UpdateGrossByGrossNumber/${grossNumber}`, { Status: 'Closed' });
                 setGrossStatus('Closed');
                 fetchReport();
             }
         } catch (error) {
-            console.error('Error closing the Gross:', error);
-            if (error.response) {
-                console.error('Status:', error.response.status);
-                console.error('Data:', error.response.data);
-            }
             setError('Failed to close the Gross. Please try again.');
         }
     };
@@ -162,45 +128,48 @@ const GrossPage = () => {
     };
 
     return (
-        <Container maxWidth="md" sx={{ py: 4, textAlign: 'center' }}>
-            <Typography variant="h4" sx={{ mb: 4, fontWeight: 'bold', color: '#1976D2' }}>
+        <Container maxWidth="md" sx={{ py: 4 }}>
+            <Typography variant="h4" sx={{ mb: 4, fontWeight: 'bold', color: '#1976D2', textAlign: 'center' }}>
                 Gestion du Gross
             </Typography>
 
             {error && (
-                <Alert severity="error" onClose={() => setError(null)} sx={{ mb: 4 }}>
+                <Alert severity="error" onClose={() => setError(null)} sx={{ mb: 3 }}>
                     {error}
                 </Alert>
             )}
 
-            <Paper elevation={3} sx={{ p: 4, borderRadius: '12px', mb: 4 }}>
+            <Paper elevation={4} sx={{ p: 4, borderRadius: 3, mb: 4 }}>
                 {loading ? (
                     <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '150px' }}>
                         <CircularProgress />
                     </Box>
                 ) : (
                     <>
-                        <Typography variant="h6" sx={{ mb: 3 }}>
+                        <Typography variant="h6" sx={{ mb: 3, textAlign: 'center' }}>
                             {grossStatus === null
                                 ? 'Aucun gross ouvert pour aujourd\'hui'
                                 : `Statut actuel du Gross: ${grossStatus}`}
                         </Typography>
 
                         {grossStatus && (
-                            <Typography variant="h5" sx={{ mb: 3, fontWeight: 'bold', color: 'green' }}>
-                                Total du Gross: {grossTotal.toFixed(2)} CFA
-                            </Typography>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-around', mb: 3 }}>
+                                <Typography variant="h5" sx={{ fontWeight: 'bold', color: 'green' }}>
+                                    Total Gross: {grossTotal.toFixed(2)} CFA
+                                </Typography>
+                                <Typography variant="h5" sx={{ fontWeight: 'bold', color: 'blue' }}>
+                                    Cash Gross: {cashGross.toFixed(2)} CFA
+                                </Typography>
+                            </Box>
                         )}
 
-                        <Divider sx={{ my: 3 }} />
-
-                        <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
                             {grossStatus === 'Open' ? (
                                 <Button
                                     variant="contained"
                                     color="secondary"
                                     onClick={handleCloseGross}
-                                    sx={{ fontWeight: 'bold', px: 4, py: 1.5, mb: 2 }}
+                                    sx={{ fontWeight: 'bold', px: 4, py: 1.5 }}
                                 >
                                     Fermer le Gross
                                 </Button>
@@ -209,7 +178,7 @@ const GrossPage = () => {
                                     variant="contained"
                                     color="primary"
                                     onClick={() => setOpenDialog(true)}
-                                    sx={{ fontWeight: 'bold', px: 4, py: 1.5, mb: 2 }}
+                                    sx={{ fontWeight: 'bold', px: 4, py: 1.5 }}
                                 >
                                     Ouvrir un Nouveau Gross
                                 </Button>
@@ -217,7 +186,7 @@ const GrossPage = () => {
                         </Box>
 
                         {grossStatus === 'Closed' && (
-                            <Typography variant="h6" color="error" sx={{ fontWeight: 'bold', mt: 2 }}>
+                            <Typography variant="h6" color="error" sx={{ fontWeight: 'bold', mt: 2, textAlign: 'center' }}>
                                 Le gross est fermé pour aujourd'hui.
                             </Typography>
                         )}
@@ -226,8 +195,8 @@ const GrossPage = () => {
             </Paper>
 
             {grossStatus === 'Closed' && (
-                <Paper elevation={3} sx={{ p: 3, borderRadius: '12px', mt: 4, height: '450px', overflow: 'hidden' }}>
-                    <Typography variant="h5" sx={{ mb: 2, fontWeight: 'bold', color: '#1976D2' }}>
+                <Paper elevation={4} sx={{ p: 3, borderRadius: 3, mt: 4, height: '450px', overflow: 'hidden' }}>
+                    <Typography variant="h5" sx={{ mb: 2, fontWeight: 'bold', color: '#1976D2', textAlign: 'center' }}>
                         Rapport du Gross
                     </Typography>
                     <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>

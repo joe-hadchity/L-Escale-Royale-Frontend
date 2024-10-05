@@ -11,19 +11,31 @@ import {
   TableRow,
   TableCell,
   Box,
+  Divider,
 } from '@mui/material';
 import { Line, Pie, Bar } from 'react-chartjs-2';
 import { Chart, CategoryScale, LinearScale, LineElement, PointElement, Tooltip, Legend, ArcElement, BarElement } from 'chart.js';
 
-// Register the necessary chart elements
+// Register necessary chart elements
 Chart.register(CategoryScale, LinearScale, LineElement, PointElement, Tooltip, Legend, ArcElement, BarElement);
 
 const Dashboard = () => {
   const [revenueData, setRevenueData] = useState(0);
   const [categoryStats, setCategoryStats] = useState([]);
   const [topItems, setTopItems] = useState([]);
+  const [grossByDate, setGrossByDate] = useState([]);
 
   useEffect(() => {
+    // Fetch total revenue by date for the line chart
+    const fetchGrossByDate = async () => {
+      try {
+        const response = await axios.post(`${process.env.REACT_APP_API_URL}/DashBoard/CreateTotalRevenueByDate`);
+        setGrossByDate(response.data);
+      } catch (error) {
+        console.error('Error fetching gross by date:', error);
+      }
+    };
+
     // Fetch total revenue
     const fetchTotalRevenue = async () => {
       try {
@@ -54,10 +66,25 @@ const Dashboard = () => {
       }
     };
 
+    fetchGrossByDate();
     fetchTotalRevenue();
     fetchCategoryStats();
     fetchTopItems();
   }, []);
+
+  // Data for Line Chart: Gross by Date
+  const grossByDateLineData = {
+    labels: grossByDate.map((entry) => new Date(entry._id).toLocaleDateString()), // Format dates to a readable format
+    datasets: [
+      {
+        label: 'Gross Over Time',
+        data: grossByDate.map((entry) => entry.TotalGross),
+        borderColor: '#4CAF50',
+        backgroundColor: 'rgba(76, 175, 80, 0.2)',
+        tension: 0.4,
+      },
+    ],
+  };
 
   // Data for Pie Chart: Sales by Category
   const categorySalesData = {
@@ -71,21 +98,7 @@ const Dashboard = () => {
     ],
   };
 
-  // Placeholder data for Revenue Line Chart (you can replace with real data)
-  const revenueLineData = {
-    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-    datasets: [
-      {
-        label: 'Revenue Over Time',
-        data: [1200, 1900, 3000, 5000, 2300, 4200], // Placeholder revenue data
-        borderColor: '#4CAF50',
-        backgroundColor: 'rgba(76, 175, 80, 0.2)',
-        tension: 0.4,
-      },
-    ],
-  };
-
-  // Data for Bar Chart: Top Categories Sales (placeholder)
+  // Data for Bar Chart: Top Categories Sales
   const categoryBarData = {
     labels: categoryStats.map((category) => category._id.CategoryName),
     datasets: [
@@ -97,6 +110,7 @@ const Dashboard = () => {
     ],
   };
 
+  // Top 3 Items by Category Data
   const topItemsData = topItems.map((category) => ({
     title: `Top 3 ${category._id}`,
     items: category.items.map((item) => ({
@@ -111,56 +125,56 @@ const Dashboard = () => {
       <Typography variant="h4" gutterBottom>
         Tableau de Bord
       </Typography>
+      <Divider sx={{ mb: 3 }} />
 
+      {/* Metrics Section */}
       <Grid container spacing={4} sx={{ marginBottom: 4 }}>
-        {/* Metrics Cards */}
         <Grid item xs={12} md={4}>
-          <Paper elevation={3} sx={{ padding: 2, backgroundColor: '#36A2EB', color: '#fff' }}>
+          <Paper elevation={3} sx={{ padding: 3, backgroundColor: '#36A2EB', color: '#fff' }}>
             <Typography variant="h6">Revenu Total</Typography>
-            <Typography variant="body1">Total Revenu: ${revenueData}</Typography>
+            <Typography variant="h4" sx={{ fontWeight: 'bold' }}>${revenueData}</Typography>
           </Paper>
         </Grid>
         <Grid item xs={12} md={4}>
-          <Paper elevation={3} sx={{ padding: 2, backgroundColor: '#4CAF50', color: '#fff' }}>
+          <Paper elevation={3} sx={{ padding: 3, backgroundColor: '#4CAF50', color: '#fff' }}>
             <Typography variant="h6">Articles Actifs</Typography>
-            <Typography variant="body1">Total Articles Actifs: 75</Typography> {/* Placeholder */}
+            <Typography variant="h4" sx={{ fontWeight: 'bold' }}>75</Typography> {/* Placeholder */}
           </Paper>
         </Grid>
         <Grid item xs={12} md={4}>
-          <Paper elevation={3} sx={{ padding: 2, backgroundColor: '#FF6384', color: '#fff' }}>
+          <Paper elevation={3} sx={{ padding: 3, backgroundColor: '#FF6384', color: '#fff' }}>
             <Typography variant="h6">Catégories</Typography>
-            <Typography variant="body1">Total Catégories: {categoryStats.length}</Typography> {/* Placeholder */}
+            <Typography variant="h4" sx={{ fontWeight: 'bold' }}>{categoryStats.length}</Typography>
           </Paper>
         </Grid>
       </Grid>
 
-      {/* Charts Section */}
+      {/* Line Chart for Gross Over Time */}
       <Grid container spacing={4} sx={{ marginBottom: 4 }}>
-        {/* Line Chart for Revenue Over Time */}
-        <Grid item xs={12} md={6}>
-          <Paper elevation={3} sx={{ padding: 2 }}>
+        <Grid item xs={12}>
+          <Paper elevation={3} sx={{ padding: 3 }}>
             <Typography variant="h6" gutterBottom>
-              Revenue Over Time
+              Gross Over Time
             </Typography>
-            <Line data={revenueLineData} />
+            <Line data={grossByDateLineData} />
           </Paper>
         </Grid>
+      </Grid>
 
-        {/* Pie Chart for Sales by Category */}
+      {/* Pie Chart for Sales by Category */}
+      <Grid container spacing={4} sx={{ marginBottom: 4 }}>
         <Grid item xs={12} md={6}>
-          <Paper elevation={3} sx={{ padding: 2 }}>
+          <Paper elevation={3} sx={{ padding: 3 }}>
             <Typography variant="h6" gutterBottom>
               Ventes par Catégorie
             </Typography>
             <Pie data={categorySalesData} />
           </Paper>
         </Grid>
-      </Grid>
 
-      {/* Bar Chart for Category Sales */}
-      <Grid container spacing={4} sx={{ marginBottom: 4 }}>
-        <Grid item xs={12}>
-          <Paper elevation={3} sx={{ padding: 2 }}>
+        {/* Bar Chart for Category Sales */}
+        <Grid item xs={12} md={6}>
+          <Paper elevation={3} sx={{ padding: 3 }}>
             <Typography variant="h6" gutterBottom>
               Ventes par Catégorie (Bar Chart)
             </Typography>
@@ -173,7 +187,7 @@ const Dashboard = () => {
       <Grid container spacing={4}>
         {topItemsData.map((category, index) => (
           <Grid item xs={12} md={6} key={index}>
-            <Paper elevation={3} sx={{ padding: 2 }}>
+            <Paper elevation={3} sx={{ padding: 3 }}>
               <Typography variant="h6" gutterBottom>
                 {category.title}
               </Typography>

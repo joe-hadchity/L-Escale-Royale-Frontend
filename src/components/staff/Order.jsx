@@ -265,53 +265,62 @@ const Order = () => {
         try {
             setPaymentMethod(method);
             
-            const status = method === 'Pay Later' ? 'Pay Later' : 'Pending';
+            // Determine status based on method
+            let status = 'Pending';
+            if (method === 'Pay Later') {
+                status = 'Pay Later';
+            } else {
+                status = 'Done'; // Set status to Done if "Served" is selected
+            }
     
-            // Debugging: Check table number and payload
-            console.log('Table Number:', tableNumber);
-            
+            const paymentType = method === 'Proceed' || method === 'Pay Later' ? 'N/A' : method;
+    
+            // Create payload
             const payload = {
                 Status: status,
+                PaymentType: paymentType,
                 Items: cart.map((item) => ({
                     CategoryName: selectedCategory,
                     Name: item.Name,
                     Description: item.Description || '',
-                    PriceDineIn: item.price || 0,
-                    PriceDelivery: item.pricedel || 0,
-                    Quantity: item.quantity || 1,
+                    PriceDineIn: parseFloat(item.price) || 0.0,
+                    PriceDelivery: parseFloat(item.pricedel) || 0.0,
+                    Quantity: parseFloat(item.quantity) || 1.0,
                     TypeItem: orderType === 'Dine In' ? 'Dine In' : 'TakeAway',
                     Ingredients: item.Ingredients || [],
                     Removals: item.removals || [],
                     AddOns: item.addOns || [],
                 })),
-                TableNumber:  (tableNumber && !isNaN(tableNumber)) ? tableNumber.toString() : 'N/A',
-                DeliveryCharge: orderType === 'Delivery' ? parseFloat(deliveryCharge) : 0,
+                TableNumber: (tableNumber && !isNaN(tableNumber)) ? tableNumber.toString() : 'N/A',
+                DeliveryCharge: orderType === 'Delivery' ? parseFloat(deliveryCharge) : 0.0,
+                Location: orderType === 'Delivery' ? deliveryLocation : '',
             };
     
-            console.log('Payload:', payload);
-            console.log("order type: ",orderType )
             if (orderNumber) {
                 // Update existing order
-                const updateResponse = await axios.put(
+                await axios.put(
                     `${process.env.REACT_APP_API_URL}/Order/UpdateOrderByOrderNumber/${orderNumber}`,
                     payload
                 );
+                console.log("Update: ", payload);
             } else {
                 // Create new order
-                const createResponse = await axios.post(
+                await axios.post(
                     `${process.env.REACT_APP_API_URL}/Order/CreateOrder`,
                     payload
                 );
-                console.log(payload)
+                console.log("Create: ", payload);
             }
     
-            // Redirect to the dashboard
             navigate('/staff/dashboard');
             setOpenPaymentDialog(false);
         } catch (error) {
             console.error('Error with payment method:', error);
         }
     };
+  
+    
+    
     
     const handleItemClick = (item) => {
         setSelectedItem({ 
@@ -736,75 +745,89 @@ const Order = () => {
             </Dialog>
 
             {/* Payment Selection Modal */}
-            <Dialog open={openPaymentDialog} onClose={() => setOpenPaymentDialog(false)} maxWidth="sm">
-    <DialogTitle sx={{ fontWeight: 'bold', textAlign: 'center' }}>Select Payment Method</DialogTitle>
+            <Dialog open={openPaymentDialog} onClose={() => setOpenPaymentDialog(false)} maxWidth="sm" fullWidth>
+    <DialogTitle sx={{ fontWeight: 'bold', textAlign: 'center' }}>Sélectionner un Mode de Paiement</DialogTitle>
     <DialogContent dividers>
-        {/* Subtitle for Guidance */}
-        <Typography variant="subtitle1" sx={{ textAlign: 'center', mb: 2 }}>
-            Choose a payment method to proceed with your order
-        </Typography>
-        
+      
+
         {/* Payment Method Options */}
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, padding: 2 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'center' }}>
             <Button
                 variant="outlined"
                 color="primary"
-                sx={{ padding: '15px', fontSize: '16px', fontWeight: 'bold', justifyContent: 'center', alignItems: 'center' }}
+                sx={{ width: '80%', padding: '12px 24px', fontSize: '16px', fontWeight: 'bold' }}
                 onClick={() => handlePaymentMethodChange('Cash')}
-                startIcon={<Money sx={{ fontSize: 25, marginRight: '10px' }} />}
+                startIcon={<Money sx={{ fontSize: 25 }} />}
             >
-                Pay with Cash
+                Payer en Espèces
             </Button>
 
             <Button
                 variant="outlined"
                 color="secondary"
-                sx={{ padding: '15px', fontSize: '16px', fontWeight: 'bold', justifyContent: 'center', alignItems: 'center' }}
+                sx={{ width: '80%', padding: '12px 24px', fontSize: '16px', fontWeight: 'bold' }}
                 onClick={() => handlePaymentMethodChange('Card')}
-                startIcon={<CreditCard sx={{ fontSize: 25, marginRight: '10px' }} />}
+                startIcon={<CreditCard sx={{ fontSize: 25 }} />}
             >
-                Pay with Card
+                Payer par Carte
             </Button>
 
             <Button
                 variant="outlined"
                 color="success"
-                sx={{ padding: '15px', fontSize: '16px', fontWeight: 'bold', justifyContent: 'center', alignItems: 'center' }}
+                sx={{ width: '80%', padding: '12px 24px', fontSize: '16px', fontWeight: 'bold' }}
                 onClick={() => handlePaymentMethodChange('Airtel')}
-                startIcon={<MobileFriendly sx={{ fontSize: 25, marginRight: '10px' }} />}
+                startIcon={<MobileFriendly sx={{ fontSize: 25 }} />}
             >
-                Pay with Airtel
+                Payer par Airtel
             </Button>
 
             <Button
                 variant="outlined"
                 color="warning"
-                sx={{ padding: '15px', fontSize: '16px', fontWeight: 'bold', justifyContent: 'center', alignItems: 'center' }}
+                sx={{ width: '80%', padding: '12px 24px', fontSize: '16px', fontWeight: 'bold' }}
                 onClick={() => handlePaymentMethodChange('Pay Later')}
-                startIcon={<Replay sx={{ fontSize: 25, marginRight: '10px' }} />}
+                startIcon={<Replay sx={{ fontSize: 25 }} />}
             >
-                Pay Later
+                Payer plus tard
             </Button>
         </Box>
 
-        {/* Proceed Button */}
-        <Box sx={{ textAlign: 'center', mt: 4 }}>
+        {/* Action Buttons */}
+        <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2, mt: 4 }}>
             <Button
                 variant="contained"
                 color="primary"
-                sx={{ padding: '15px 30px', fontSize: '18px', fontWeight: 'bold', minWidth: '200px' }}
+                sx={{ padding: '12px 36px', fontSize: '18px', fontWeight: 'bold' }}
                 onClick={() => handlePaymentMethodChange('Proceed')}
             >
-                Proceed
+                Continuer
             </Button>
+            {/* <Button
+                variant="contained"
+                color="secondary"
+                sx={{ padding: '12px 36px', fontSize: '18px', fontWeight: 'bold' }}
+                onClick={() => handlePaymentMethodChange('Served')}
+            >
+                Servi
+            </Button> */}
         </Box>
     </DialogContent>
-    <DialogActions sx={{ justifyContent: 'center' }}>
-        <Button onClick={() => setOpenPaymentDialog(false)} color="secondary" sx={{ fontWeight: 'bold' }}>
-            Cancel
+
+    {/* Cancel Button */}
+    <DialogActions sx={{ justifyContent: 'center', pb: 3 }}>
+        <Button
+            onClick={() => setOpenPaymentDialog(false)}
+            color="inherit"
+            variant="outlined"
+            sx={{ padding: '8px 20px', fontWeight: 'bold' }}
+        >
+            Annuler
         </Button>
     </DialogActions>
 </Dialog>
+
+
 
         </Container>
     );

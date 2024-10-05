@@ -129,49 +129,74 @@ const Dashboard = () => {
                             boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
                             borderRadius: 3,
                             padding: 3,
-                            overflow: 'auto',
+                            overflow: 'hidden',
                         }}
                     >
                         <Typography variant="h5" sx={{ textAlign: 'center', fontWeight: 'bold', color: '#3949ab', mb: 2 }}>
                             Statut des tables
                         </Typography>
-                        <Grid container spacing={2} columns={4}>
-                            {[...Array(TOTAL_TABLES)].map((_, index) => {
-                                const tableNumber = index + 1;
-                                const occupied = isTableOccupied(tableNumber);
+                        
+                        {/* Scrollable Box for Tables */}
+                        <Box
+                            sx={{
+                                flexGrow: 1,
+                                overflowY: 'auto',
+                                paddingRight: '8px',
+                                maxHeight: '400px', // Set max height as needed
+                                '&::-webkit-scrollbar': {
+                                    width: '8px',
+                                },
+                                '&::-webkit-scrollbar-track': {
+                                    backgroundColor: '#f0f0f0',
+                                    borderRadius: '10px',
+                                },
+                                '&::-webkit-scrollbar-thumb': {
+                                    backgroundColor: '#c0c0c0',
+                                    borderRadius: '10px',
+                                },
+                                '&::-webkit-scrollbar-thumb:hover': {
+                                    backgroundColor: '#9e9e9e',
+                                },
+                            }}
+                        >
+                            <Grid container spacing={2} columns={4}>
+                                {[...Array(TOTAL_TABLES)].map((_, index) => {
+                                    const tableNumber = index + 1;
+                                    const occupied = isTableOccupied(tableNumber);
 
-                                return (
-                                    <Grid item xs={1} key={tableNumber} sx={{ display: 'flex', justifyContent: 'center' }}>
-                                        <Paper
-                                            sx={{
-                                                width: '100%',
-                                                aspectRatio: '1/1',
-                                                padding: 1,
-                                                borderLeft: `6px solid ${occupied ? '#f44336' : '#66bb6a'}`,
-                                                backgroundColor: occupied ? '#ffcdd2' : '#c8e6c9',
-                                                cursor: 'pointer',
-                                                transition: 'transform 0.2s, box-shadow 0.2s',
-                                                borderRadius: 2,
-                                                '&:hover': {
-                                                    transform: 'scale(1.05)',
-                                                    boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
-                                                },
-                                            }}
-                                            onClick={() => handleTableClick(tableNumber)}
-                                        >
-                                            <Box sx={{ textAlign: 'center' }}>
-                                                <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1 }}>
-                                                    Table {tableNumber}
-                                                </Typography>
-                                                <Typography variant="body2" sx={{ fontWeight: '500' }}>
-                                                    {occupied ? 'Occupée' : 'Disponible'}
-                                                </Typography>
-                                            </Box>
-                                        </Paper>
-                                    </Grid>
-                                );
-                            })}
-                        </Grid>
+                                    return (
+                                        <Grid item xs={1} key={tableNumber} sx={{ display: 'flex', justifyContent: 'center' }}>
+                                            <Paper
+                                                sx={{
+                                                    width: '100%',
+                                                    aspectRatio: '1/1',
+                                                    padding: 1,
+                                                    borderLeft: `6px solid ${occupied ? '#f44336' : '#66bb6a'}`,
+                                                    backgroundColor: occupied ? '#ffcdd2' : '#c8e6c9',
+                                                    cursor: 'pointer',
+                                                    transition: 'transform 0.2s, box-shadow 0.2s',
+                                                    borderRadius: 2,
+                                                    '&:hover': {
+                                                        transform: 'scale(1.05)',
+                                                        boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
+                                                    },
+                                                }}
+                                                onClick={() => handleTableClick(tableNumber)}
+                                            >
+                                                <Box sx={{ textAlign: 'center' }}>
+                                                    <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1 }}>
+                                                        Table {tableNumber}
+                                                    </Typography>
+                                                    <Typography variant="body2" sx={{ fontWeight: '500' }}>
+                                                        {occupied ? 'Occupée' : 'Disponible'}
+                                                    </Typography>
+                                                </Box>
+                                            </Paper>
+                                        </Grid>
+                                    );
+                                })}
+                            </Grid>
+                        </Box>
                     </Paper>
                 </Grid>
 
@@ -186,35 +211,55 @@ const Dashboard = () => {
                             boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
                             borderRadius: 3,
                             padding: 3,
-                            overflow: 'auto',
+                            overflow: 'hidden',
                         }}
                     >
                         <Typography variant="h5" sx={{ textAlign: 'center', fontWeight: 'bold', color: '#3949ab', mb: 2 }}>
                             Commandes en attente
                         </Typography>
-                        <Stack spacing={2}>
-                            {pendingOrders.map((order) => (
-                                <Paper
-                                    key={order.OrderNumber}
-                                    sx={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'space-between',
-                                        padding: 2,
-                                        borderRadius: 2,
-                                        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                                        border: '1px solid #e0e0e0',
-                                    }}
-                                >
-                                    <Box sx={{ flex: 1 }}>
-                                        <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: '#333' }}>
-                                            Commande N°{order.OrderNumber}
-                                        </Typography>
-                                        <Typography variant="body2" color="textSecondary">
-                                            {order.Type} {order.TableNumber && `(Table: ${order.TableNumber})`}
-                                        </Typography>
-                                    </Box>
-                                    <Box sx={{ display: 'flex', gap: 1 }}>
+                        <Box
+                            sx={{
+                                flexGrow: 1,
+                                overflowY: 'auto',
+                                maxHeight: '350px',
+                                '&::-webkit-scrollbar': {
+                                    width: '8px',
+                                },
+                                '&::-webkit-scrollbar-track': {
+                                    background: '#f0f0f0',
+                                    borderRadius: '4px',
+                                },
+                                '&::-webkit-scrollbar-thumb': {
+                                    background: '#bdbdbd',
+                                    borderRadius: '4px',
+                                },
+                                '&::-webkit-scrollbar-thumb:hover': {
+                                    background: '#9e9e9e',
+                                },
+                            }}
+                        >
+                            <Stack spacing={2} sx={{ paddingRight: '8px' }}>
+                                {pendingOrders.map((order) => (
+                                    <Paper
+                                        key={order.OrderNumber}
+                                        sx={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'space-between',
+                                            padding: 2,
+                                            borderRadius: 2,
+                                            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                                            border: '1px solid #e0e0e0',
+                                        }}
+                                    >
+                                        <Box sx={{ flex: 1 }}>
+                                            <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: '#333' }}>
+                                                Commande N°{order.OrderNumber}
+                                            </Typography>
+                                            <Typography variant="body2" color="textSecondary">
+                                                {order.Type} {order.TableNumber && `(Table: ${order.TableNumber})`}
+                                            </Typography>
+                                        </Box>
                                         <Button
                                             variant="contained"
                                             color="primary"
@@ -224,10 +269,10 @@ const Dashboard = () => {
                                         >
                                             Voir
                                         </Button>
-                                    </Box>
-                                </Paper>
-                            ))}
-                        </Stack>
+                                    </Paper>
+                                ))}
+                            </Stack>
+                        </Box>
                     </Paper>
 
                     {/* Takeaway & Delivery Buttons */}

@@ -17,7 +17,8 @@ import {
   AccordionDetails,
   List,
   ListItem,
-  ListItemText
+  ListItemText,
+  TablePagination,
 } from '@mui/material';
 import axios from 'axios';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -28,6 +29,10 @@ const History = () => {
   const [searchDate, setSearchDate] = useState('');
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  // Pagination state
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   // Function to format the date as dd/MM/yyyy
   const formatDate = (date) => {
@@ -40,7 +45,7 @@ const History = () => {
   };
 
   // Fetch orders based on either order number or date
-  const fetchFilteredHistory = async () => {
+  const fetchFilteredHistory = async (pageNumber = 1, pageSize = rowsPerPage) => {
     try {
       setLoading(true);
       setError(null); // Reset any previous errors
@@ -54,7 +59,7 @@ const History = () => {
       // Search by date
       else if (searchDate) {
         const formattedDate = formatDate(searchDate); // Format the date as dd/MM/yyyy
-        apiUrl = `${process.env.REACT_APP_API_URL}/Order/GetOrderByDate?date=${formattedDate}`;
+        apiUrl = `${process.env.REACT_APP_API_URL}/Order/GetOrderByDate?date=${formattedDate}&pageNumber=${pageNumber}&pageSize=${pageSize}`;
       } else {
         setError('Veuillez entrer un numéro de commande ou sélectionner une date pour rechercher.');
         setLoading(false);
@@ -72,7 +77,7 @@ const History = () => {
 
       // Handle both array and single object response
       const responseData = Array.isArray(response.data) ? response.data : [response.data];
-      
+
       // If no data is found, set an appropriate error message
       if (responseData.length === 0) {
         setError('Aucune commande trouvée pour les critères donnés.');
@@ -90,6 +95,18 @@ const History = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handlePageChange = (event, newPage) => {
+    setPage(newPage);
+    fetchFilteredHistory(newPage + 1, rowsPerPage);
+  };
+
+  const handleRowsPerPageChange = (event) => {
+    const newRowsPerPage = parseInt(event.target.value, 10);
+    setRowsPerPage(newRowsPerPage);
+    setPage(0); // Reset to the first page
+    fetchFilteredHistory(1, newRowsPerPage);
   };
 
   return (
@@ -114,7 +131,7 @@ const History = () => {
           InputLabelProps={{ shrink: true }}
           fullWidth
         />
-        <Button variant="contained" onClick={fetchFilteredHistory}>
+        <Button variant="contained" onClick={() => fetchFilteredHistory()}>
           Rechercher
         </Button>
       </Box>
@@ -155,7 +172,7 @@ const History = () => {
             <TableBody>
               {history.map((order, index) => (
                 <TableRow key={index}>
-                  <TableCell>{index + 1}</TableCell>
+                  <TableCell>{index + 1 + page * rowsPerPage}</TableCell>
                   <TableCell>{order.Created_by || 'N/A'}</TableCell>
                   <TableCell>{order.DateOfOrder || 'N/A'}</TableCell>
                   <TableCell>{order.OrderNumber || 'N/A'}</TableCell>
@@ -197,6 +214,16 @@ const History = () => {
               ))}
             </TableBody>
           </Table>
+          {/* Pagination component */}
+          <TablePagination
+            component="div"
+            count={-1} // Indeterminate count to handle unknown total
+            page={page}
+            onPageChange={handlePageChange}
+            rowsPerPage={rowsPerPage}
+            onRowsPerPageChange={handleRowsPerPageChange}
+            labelRowsPerPage="Commandes par page"
+          />
         </TableContainer>
       )}
 

@@ -20,6 +20,8 @@ import {
   Paper,
   Typography,
   Chip,
+  TablePagination,
+  CircularProgress,
 } from "@mui/material";
 import axios from "axios";
 
@@ -40,15 +42,28 @@ const ItemManagement = () => {
   const [selectedIngredientCategory, setSelectedIngredientCategory] = useState("");
   const [loadingItems, setLoadingItems] = useState(false);
 
+  // Pagination state
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [totalItems, setTotalItems] = useState(0);
+
   useEffect(() => {
     fetchCategories();
-    fetchIngredients(); // Fetch all ingredient categories
+    fetchIngredients();
   }, []);
+
+  useEffect(() => {
+    if (selectedCategory) {
+      console.log(`Fetching items for category: ${selectedCategory}, page: ${page}, rowsPerPage: ${rowsPerPage}`);
+      fetchItemsByCategory(selectedCategory, page + 1, rowsPerPage);
+    }
+  }, [selectedCategory, page, rowsPerPage]);
 
   const fetchCategories = async () => {
     try {
       const response = await axios.get(`${process.env.REACT_APP_API_URL}/Category/GetAllCategories`);
-      setCategories(response.data);
+      console.log("Categories fetched:", response.data);
+      setCategories(response.data || []);
     } catch (error) {
       console.error("Error fetching categories:", error);
     }
@@ -58,7 +73,8 @@ const ItemManagement = () => {
     try {
       const response = await axios.get(`${process.env.REACT_APP_API_URL}/Ingredients/GetAllIngredients`);
       const parsedIngredients = parseIngredients(response.data);
-      setIngredientsCategories(parsedIngredients);
+      console.log("Ingredients fetched:", parsedIngredients);
+      setIngredientsCategories(parsedIngredients || []);
     } catch (error) {
       console.error("Error fetching ingredients:", error);
     }
@@ -66,14 +82,12 @@ const ItemManagement = () => {
 
   const parseIngredients = (data) => {
     return data.map((categoryObj, index) => {
-      // Find the first key in the object that is not '_id'
-      const categoryName = Object.keys(categoryObj).find((key) => key !== '_id');
-      // Extract the array of ingredients for the identified category
+      const categoryName = Object.keys(categoryObj).find((key) => key !== "_id");
       const ingredientsArray = categoryObj[categoryName] || [];
 
       if (categoryName && Array.isArray(ingredientsArray)) {
         return {
-          categoryName: categoryName, // Use the dynamic category name
+          categoryName: categoryName,
           ingredients: ingredientsArray,
         };
       } else {
@@ -86,42 +100,62 @@ const ItemManagement = () => {
     });
   };
 
-  const fetchItemsByCategory = async (category) => {
+  const fetchItemsByCategory = async (category, pageNumber, pageSize) => {
     try {
       setLoadingItems(true);
-      const apiUrl = `${process.env.REACT_APP_API_URL}/Item/GetItemsByCategory/${category}`;
+      const apiUrl = `${process.env.REACT_APP_API_URL}/Item/GetItemsByCategory/${category}?pageNumber=${pageNumber}&pageSize=${pageSize}`;
+      console.log("Fetching items from URL:", apiUrl);
       const response = await axios.get(apiUrl);
-      setItems(response.data);
+      console.log("Full response data:", response.data);
+  
+      // Since response.data is already an array of items
+      setItems(response.data || []);
+      setTotalItems(response.data.length || 0);
+  
       setLoadingItems(false);
     } catch (error) {
       console.error("Error fetching items:", error);
       setLoadingItems(false);
     }
   };
+  
+  
 
   const handleCategoryChange = (event) => {
     const category = event.target.value;
+    console.log("Category selected:", category);
     setSelectedCategory(category);
-    if (category) {
-      fetchItemsByCategory(category);
-    } else {
-      setItems([]);
-    }
+    setPage(0); // Reset to the first page on category change
   };
 
   const handleIngredientCategoryChange = (event) => {
     const category = event.target.value;
     setSelectedIngredientCategory(category);
-    const selectedCategory = ingredientsCategories.find((cat) => cat.categoryName === category); // Changed to categoryName
-    if (selectedCategory) {
-      setAvailableIngredients(selectedCategory.ingredients);
+
+    // Find the corresponding ingredient category and set available ingredients
+    const selectedCat = ingredientsCategories.find((cat) => cat.categoryName === category);
+    console.log("Selected ingredient category:", selectedCat);
+    if (selectedCat) {
+      setAvailableIngredients(selectedCat.ingredients || []); // Ensure availableIngredients is an array
     } else {
       setAvailableIngredients([]);
     }
   };
 
+  const handlePageChange = (event, newPage) => {
+    console.log("Page changed to:", newPage);
+    setPage(newPage);
+  };
+
+  const handleRowsPerPageChange = (event) => {
+    console.log("Rows per page changed to:", event.target.value);
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
+
   const handleShowModal = (item = null) => {
     if (item) {
+      console.log("Editing item:", item);
       setModalTitle("Mettre à jour l'article");
       setCurrentItem(item);
       setItemName(item.Name || "");
@@ -130,6 +164,7 @@ const ItemManagement = () => {
       setPriceDelivery(item.pricedel || "");
       setIngredients(item.Ingredients || []);
     } else {
+      console.log("Adding a new item");
       setModalTitle("Ajouter un article");
       setCurrentItem(null);
       setItemName("");
@@ -152,6 +187,8 @@ const ItemManagement = () => {
         Ingredients: ingredients,
       };
 
+      console.log("Saving item:", newItem);
+
       if (currentItem) {
         await axios.put(
           `${process.env.REACT_APP_API_URL}/Item/UpdateItemByName/${currentItem.Name}`,
@@ -162,7 +199,7 @@ const ItemManagement = () => {
       }
 
       setShowModal(false);
-      fetchItemsByCategory(selectedCategory);
+      fetchItemsByCategory(selectedCategory, page + 1, rowsPerPage);
     } catch (error) {
       if (error.response && error.response.status === 409) {
         alert("An item with this name already exists. Please choose a different name.");
@@ -174,22 +211,12 @@ const ItemManagement = () => {
 
   const handleDeleteItem = async (name) => {
     try {
+      console.log("Deleting item:", name);
       await axios.delete(`${process.env.REACT_APP_API_URL}/Item/DeleteItemByName/${name}`);
-      fetchItemsByCategory(selectedCategory);
+      fetchItemsByCategory(selectedCategory, page + 1, rowsPerPage);
     } catch (error) {
       console.error("Error deleting item:", error);
     }
-  };
-
-  const handleAddIngredient = (ingredient) => {
-    if (!ingredients.some(ing => ing.Name === ingredient.Name)) {
-      setIngredients([...ingredients, ingredient]);
-    }
-  };
-
-  const handleRemoveIngredient = (index) => {
-    const updatedIngredients = ingredients.filter((_, i) => i !== index);
-    setIngredients(updatedIngredients);
   };
 
   return (
@@ -204,7 +231,7 @@ const ItemManagement = () => {
             <MenuItem value="">
               <em>Sélectionner une catégorie</em>
             </MenuItem>
-            {categories.map((category, index) => (
+            {(categories || []).map((category, index) => (
               <MenuItem key={index} value={category.Name}>
                 {category.Name}
               </MenuItem>
@@ -218,127 +245,67 @@ const ItemManagement = () => {
         )}
       </Box>
 
-      {selectedCategory && (
-        <TableContainer component={Paper}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>#</TableCell>
-                <TableCell>Nom de l'Article</TableCell>
-                <TableCell>Catégorie</TableCell>
-                <TableCell>Prix Dine-In</TableCell>
-                <TableCell>Prix Delivery</TableCell>
-                <TableCell>Actions</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {items.map((item, index) => (
-                <TableRow key={index}>
-                  <TableCell>{index + 1}</TableCell>
-                  <TableCell>{item.Name}</TableCell>
-                  <TableCell>{item.CategoryName}</TableCell>
-                  <TableCell>{item.price ? item.price.toFixed(2) : "N/A"} €</TableCell>
-                  <TableCell>{item.pricedel ? item.pricedel.toFixed(2) : "N/A"} €</TableCell>
-                  <TableCell>
-                    <Button
-                      variant="contained"
-                      color="info"
-                      sx={{ marginRight: 2 }}
-                      onClick={() => handleShowModal(item)}
-                    >
-                      Mettre à jour
-                    </Button>
-                    <Button variant="contained" color="error" onClick={() => handleDeleteItem(item.Name)}>
-                      Supprimer
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+      {loadingItems ? (
+        <CircularProgress />
+      ) : (
+        selectedCategory && (
+          <>
+            <TableContainer component={Paper}>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>#</TableCell>
+                    <TableCell>Nom de l'Article</TableCell>
+                    <TableCell>Catégorie</TableCell>
+                    <TableCell>Prix Dine-In</TableCell>
+                    <TableCell>Prix Delivery</TableCell>
+                    <TableCell>Actions</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {(items || []).map((item, index) => (
+                    <TableRow key={index}>
+                      <TableCell>{index + 1 + page * rowsPerPage}</TableCell>
+                      <TableCell>{item.Name}</TableCell>
+                      <TableCell>{item.CategoryName}</TableCell>
+                      <TableCell>{item.price ? item.price.toFixed(2) : "N/A"} €</TableCell>
+                      <TableCell>{item.pricedel ? item.pricedel.toFixed(2) : "N/A"} €</TableCell>
+                      <TableCell>
+                        <Button
+                          variant="contained"
+                          color="info"
+                          sx={{ marginRight: 2 }}
+                          onClick={() => handleShowModal(item)}
+                        >
+                          Mettre à jour
+                        </Button>
+                        <Button variant="contained" color="error" onClick={() => handleDeleteItem(item.Name)}>
+                          Supprimer
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+
+            <TablePagination
+              component="div"
+              count={totalItems}
+              page={page}
+              onPageChange={handlePageChange}
+              rowsPerPage={rowsPerPage}
+              onRowsPerPageChange={handleRowsPerPageChange}
+              labelRowsPerPage="Articles par page"
+            />
+          </>
+        )
       )}
 
       <Dialog open={showModal} onClose={() => setShowModal(false)} maxWidth="sm" fullWidth>
         <DialogTitle>{modalTitle}</DialogTitle>
         <DialogContent>
-          <FormControl fullWidth sx={{ marginBottom: 2 }}>
-            <InputLabel>Catégorie d'ingrédient</InputLabel>
-            <Select value={selectedIngredientCategory} onChange={handleIngredientCategoryChange}>
-              <MenuItem value="">
-                <em>Sélectionner une catégorie d'ingrédient</em>
-              </MenuItem>
-              {ingredientsCategories.map((category, index) => (
-                <MenuItem key={index} value={category.categoryName}>
-                  {category.categoryName}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          <FormControl fullWidth sx={{ marginBottom: 2 }}>
-            <InputLabel>Ingrédients</InputLabel>
-            <Select
-              multiple
-              value={ingredients}
-              onChange={(e) => setIngredients(e.target.value)}
-              renderValue={(selected) => selected.map((ing) => ing.Name).join(", ")}
-            >
-              {availableIngredients.map((ingredient, index) => (
-                <MenuItem key={index} value={ingredient}>
-                  {ingredient.Name} - {ingredient.Price} €
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          {ingredients.length > 0 && (
-            <Box sx={{ marginTop: 2 }}>
-              <Typography variant="h6">Ingrédients Sélectionnés:</Typography>
-              {ingredients.map((ingredient, index) => (
-                <Chip
-                  key={index}
-                  label={`${ingredient.Name} - ${ingredient.Price} €`}
-                  onDelete={() => handleRemoveIngredient(index)}
-                  sx={{ marginRight: 1, marginBottom: 1 }}
-                />
-              ))}
-            </Box>
-          )}
-
-          <TextField
-            fullWidth
-            margin="normal"
-            label="Nom de l'Article"
-            value={itemName}
-            onChange={(e) => setItemName(e.target.value)}
-          />
-
-          <TextField
-            fullWidth
-            margin="normal"
-            label="Description"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-          />
-
-          <TextField
-            fullWidth
-            margin="normal"
-            label="Prix Dine-In"
-            type="number"
-            value={price}
-            onChange={(e) => setPrice(e.target.value)}
-          />
-
-          <TextField
-            fullWidth
-            margin="normal"
-            label="Prix Livraison"
-            type="number"
-            value={pricedel}
-            onChange={(e) => setPriceDelivery(e.target.value)}
-          />
+          {/* Dialog content for adding/updating items */}
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setShowModal(false)} color="secondary">

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
     TableContainer, Table, TableBody, TableCell, TableHead, TableRow, Paper,
-    Button, Dialog, DialogActions, DialogContent, DialogTitle, TextField, Typography, Box, Select, MenuItem, InputLabel, FormControl
+    Button, Dialog, DialogActions, DialogContent, DialogTitle, TextField, Typography, Box, Select, MenuItem, InputLabel, FormControl, TablePagination
 } from '@mui/material';
 import axios from 'axios';
 
@@ -14,13 +14,23 @@ const SupplierPayments = () => {
     const [paymentReason, setPaymentReason] = useState('');
     const [paymentType, setPaymentType] = useState('');
 
+    // Pagination state
+    const [page, setPage] = useState(0);
+    const [rowsPerPage, setRowsPerPage] = useState(10);
+
     useEffect(() => {
         fetchPayments();
-    }, []);
+    }, [page, rowsPerPage]);
 
     const fetchPayments = async () => {
         try {
-            const response = await axios.get(`${process.env.REACT_APP_API_URL}/Payment/GetAllPayment`);
+            // Include pagination parameters
+            const response = await axios.get(`${process.env.REACT_APP_API_URL}/Payment/GetAllPayment`, {
+                params: {
+                    pageNumber: page + 1, // Page number starts at 1 in the backend
+                    pageSize: rowsPerPage
+                }
+            });
             setPayments(response.data);
         } catch (error) {
             console.error('Error fetching payments:', error);
@@ -49,14 +59,17 @@ const SupplierPayments = () => {
             alert('Tous les champs sont obligatoires.');
             return;
         }
-
+    
         try {
             const paymentData = {
                 Amount: parseFloat(paymentAmount),
                 Type: paymentType,
                 Reason: paymentReason,
             };
-
+    
+            // Print the data being sent to the backend
+            console.log('Payment data:', paymentData);
+    
             if (currentPayment && currentPayment.PaymentNumber) {
                 const updateUrl = `${process.env.REACT_APP_API_URL}/Payment/UpdatePaymentByPaymentNumber/${encodeURIComponent(currentPayment.PaymentNumber)}`;
                 await axios.put(updateUrl, paymentData);
@@ -64,7 +77,7 @@ const SupplierPayments = () => {
                 const createUrl = `${process.env.REACT_APP_API_URL}/Payment/CreatePayment`;
                 await axios.post(createUrl, paymentData);
             }
-
+    
             setShowModal(false);
             fetchPayments();
         } catch (error) {
@@ -72,6 +85,7 @@ const SupplierPayments = () => {
             alert(`Erreur lors de la sauvegarde du paiement: ${error.response?.data || error.message}`);
         }
     };
+    
 
     const handleDeletePayment = async (paymentNumber) => {
         if (!window.confirm(`Êtes-vous sûr de vouloir supprimer le paiement numéro '${paymentNumber}'?`)) {
@@ -86,6 +100,15 @@ const SupplierPayments = () => {
             console.error('Error deleting payment:', error);
             alert(`Erreur lors de la suppression du paiement: ${error.response?.data || error.message}`);
         }
+    };
+
+    const handlePageChange = (event, newPage) => {
+        setPage(newPage);
+    };
+
+    const handleRowsPerPageChange = (event) => {
+        setRowsPerPage(parseInt(event.target.value, 10));
+        setPage(0); // Reset to the first page
     };
 
     return (
@@ -117,7 +140,7 @@ const SupplierPayments = () => {
                         {payments.length > 0 ? (
                             payments.map((payment, index) => (
                                 <TableRow key={index}>
-                                    <TableCell>{index + 1}</TableCell>
+                                    <TableCell>{index + 1 + page * rowsPerPage}</TableCell>
                                     <TableCell>{payment.PaymentNumber}</TableCell>
                                     <TableCell>{payment.Amount}</TableCell>
                                     <TableCell>{payment.Type}</TableCell>
@@ -150,6 +173,16 @@ const SupplierPayments = () => {
                         )}
                     </TableBody>
                 </Table>
+                {/* Pagination controls */}
+                <TablePagination
+                    component="div"
+                    count={-1} // Unknown total count; adjust if you have a total count
+                    page={page}
+                    onPageChange={handlePageChange}
+                    rowsPerPage={rowsPerPage}
+                    onRowsPerPageChange={handleRowsPerPageChange}
+                    labelRowsPerPage="Paiements par page"
+                />
             </TableContainer>
 
             {/* Modal for Add/Update Payment */}
@@ -171,8 +204,8 @@ const SupplierPayments = () => {
                                 onChange={(e) => setPaymentType(e.target.value)}
                                 label="Type de Paiement"
                             >
-                                <MenuItem value="revenue">Revenu</MenuItem>
-                                <MenuItem value="income">Revenu</MenuItem>
+                                <MenuItem value="revenue">Revenue</MenuItem>
+                                <MenuItem value="income">Depense</MenuItem>
                             </Select>
                         </FormControl>
                         <TextField
