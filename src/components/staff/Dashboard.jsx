@@ -339,14 +339,34 @@ const Dashboard = () => {
                                     borderRadius: 1,
                                     boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
                                     border: '1px solid #e0e0e0',
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
                                 }}
                             >
-                                <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: '#333' }}>
-                                    Commande N°{order.OrderNumber}
-                                </Typography>
-                                <Typography variant="body2" color="textSecondary">
-                                    {order.Type} {order.TableNumber && `(Table: ${order.TableNumber})`}
-                                </Typography>
+                                <Box>
+                                    <Typography variant="subtitle1" sx={{ fontWeight: 'bold', color: '#333' }}>
+                                        Commande N°{order.OrderNumber}
+                                    </Typography>
+                                    <Typography variant="body2" color="textSecondary">
+                                        {order.Type} {order.TableNumber && `(Table: ${order.TableNumber})`}
+                                    </Typography>
+                                    {/* Display note if available */}
+                                    {order.Note && (
+                                        <Typography variant="body2" color="textSecondary" sx={{ fontStyle: 'italic', mt: 1 }}>
+                                            Note: {order.Note}
+                                        </Typography>
+                                    )}
+                                </Box>
+                                <Button
+                                    variant="contained"
+                                    color="primary"
+                                    onClick={() => handleOrderClick(order)}
+                                    sx={{ textTransform: 'none', minWidth: '100px' }}
+                                    startIcon={<VisibilityIcon />}
+                                >
+                                    Voir
+                                </Button>
                             </Paper>
                         ))}
                     </Stack>
