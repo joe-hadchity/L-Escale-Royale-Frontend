@@ -1,7 +1,8 @@
 {
-  "name": "frontend",
+  "name": "escaleroyale",
+  "author": "DotDev Consulting",
   "version": "0.1.0",
-  "main": "main.js",
+  "main": "public/electron.js",
   "private": true,
   "dependencies": {
     "@emotion/react": "^11.13.3",
@@ -16,7 +17,6 @@
     "axios": "^1.7.7",
     "bootstrap": "^5.3.3",
     "chart.js": "^4.4.4",
-    "frontend": "file:",
     "js-cookie": "^3.0.5",
     "react": "^18.3.1",
     "react-bootstrap": "^2.10.4",
@@ -35,8 +35,21 @@
     "start": "react-scripts start",
     "electron": "electron .",
     "build": "react-scripts build",
+    "dist": "electron-builder",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "package-win": "electron-packager . EscaleRoyalePOS --platform=win32 --arch=x64 --out=dist --overwrite"
+  },
+  "build": {
+    "appId": "com.escaleroyale.pos",
+    "directories": {
+      "buildResources": "build",
+      "output": "dist"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.ico"
+    }
   },
   "eslintConfig": {
     "extends": [
@@ -59,6 +72,8 @@
   "devDependencies": {
     "autoprefixer": "^10.4.20",
     "electron": "^32.0.1",
+    "electron-builder": "^25.1.7",
+    "electron-packager": "^17.1.2",
     "postcss": "^8.4.44",
     "tailwindcss": "^3.4.10"
   }

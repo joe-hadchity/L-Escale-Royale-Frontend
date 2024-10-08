@@ -322,9 +322,6 @@ const Order = () => {
             console.error('Error with payment method:', error);
         }
     };
-  
-    
-    
     
     const handleItemClick = (item) => {
         setSelectedItem({ 
