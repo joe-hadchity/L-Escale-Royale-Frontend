@@ -11,9 +11,10 @@ const UserManagement = () => {
   const [showModal, setShowModal] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [username, setUsername] = useState('');
-  const [role, setRole] = useState('');
+  const [role, setRole] = useState('admin');
   const [pin, setPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
+  const [id, setId] = useState(''); // Add an ID field for handling login
 
   useEffect(() => {
     fetchUsers();
@@ -79,11 +80,21 @@ const UserManagement = () => {
       } else {
         // Create new user
         const createUrl = `${process.env.REACT_APP_API_URL}/User/CreateUser`;
-        await axios.post(createUrl, user);
-        console.log('User created');
+        const response = await axios.post(createUrl, user);
+        const createdUser = response.data; // Assuming the backend returns the created user with an id
+        
+        console.log('User created:', createdUser);
+        
+        // Add the new user with the generated ID (used later for login) to the state
+        setUsers([...users, {
+          id: createdUser.Id, // Use the returned id for login
+          username: createdUser.Username, // Store for possible reference
+          role: createdUser.Role,
+          pin: createdUser.Pin // Storing the pin here for demonstration (although sensitive, usually stored hashed)
+        }]);
       }
       setShowModal(false);
-      fetchUsers();
+      fetchUsers(); // Optionally refetch users
     } catch (error) {
       console.error('Error saving user:', error);
       alert('Failed to save user.');
@@ -99,6 +110,18 @@ const UserManagement = () => {
     } catch (error) {
       console.error('Error deleting user:', error);
       alert('Failed to delete user.');
+    }
+  };
+
+  const handleLogin = async (id, pin) => {
+    try {
+      const loginUrl = `${process.env.REACT_APP_API_URL}/User/Login`;
+      const response = await axios.post(loginUrl, { id, pin }); // Login with id and pin
+      console.log('Login successful', response.data);
+      // Proceed with login actions...
+    } catch (error) {
+      console.error('Login failed:', error);
+      alert('Login failed, please check your ID and PIN.');
     }
   };
 
