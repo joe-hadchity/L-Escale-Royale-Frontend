@@ -22,7 +22,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useOrder } from '../../context/OrderContext';
 
-const TOTAL_TABLES = 18;
+const TOTAL_TABLES = 24;
 
 const Dashboard = () => {
     const [pendingOrders, setPendingOrders] = useState([]);
@@ -34,9 +34,14 @@ const Dashboard = () => {
     useEffect(() => {
         const fetchOrders = async () => {
             try {
+                // Fetch pending orders
                 const pendingResponse = await axios.get(`${process.env.REACT_APP_API_URL}/Order/GetOrderByStatus/Pending`);
-                setPendingOrders(pendingResponse.data);
-
+                const filteredPendingOrders = pendingResponse.data.filter(
+                    (order) => order.Type !== 'Dine In'
+                );
+                setPendingOrders(filteredPendingOrders); // Set only the filtered pending orders
+                console.log(pendingOrders);
+                // Fetch pay later orders
                 const payLaterResponse = await axios.get(`${process.env.REACT_APP_API_URL}/Order/GetOrderByStatus/Pay%20Later`);
                 setPayLaterOrders(payLaterResponse.data);
             } catch (error) {
@@ -46,8 +51,10 @@ const Dashboard = () => {
                 }
             }
         };
+    
         fetchOrders();
     }, []);
+    
 
     const handleTableClick = (tableNumber) => {
         const existingOrder = pendingOrders.find(order => order.TableNumber === tableNumber.toString());
@@ -100,26 +107,9 @@ const Dashboard = () => {
 
     return (
         <Container maxWidth="xl" sx={{ paddingY: 4, height: '100vh', display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <Typography variant="h4" sx={{ mb: 2, textAlign: 'center', fontWeight: 'bold', color: '#2c387e' }}>
-                Tableau de bord
-            </Typography>
-
-            {/* Notification Icon for Pay Later Orders */}
-            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-                <IconButton onClick={handlePayLaterDialogOpen}>
-                    <Badge
-                        color="error"
-                        variant="dot"
-                        invisible={payLaterOrders.length === 0}
-                    >
-                        <NotificationsIcon fontSize="large" />
-                    </Badge>
-                </IconButton>
-            </Box>
-
-            <Grid container spacing={3} sx={{ flexGrow: 1 }}>
+            <Grid container spacing={1} sx={{ flexGrow: 1 }}>
                 {/* Table Status Section */}
-                <Grid item xs={12} md={5} sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <Grid item xs={12} md={8} sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                     <Paper
                         sx={{
                             height: '100%',
@@ -138,70 +128,57 @@ const Dashboard = () => {
                         
                         {/* Scrollable Box for Tables */}
                         <Box
-                            sx={{
-                                flexGrow: 1,
-                                overflowY: 'auto',
-                                paddingRight: '8px',
-                                maxHeight: '400px', // Set max height as needed
-                                '&::-webkit-scrollbar': {
-                                    width: '8px',
-                                },
-                                '&::-webkit-scrollbar-track': {
-                                    backgroundColor: '#f0f0f0',
-                                    borderRadius: '10px',
-                                },
-                                '&::-webkit-scrollbar-thumb': {
-                                    backgroundColor: '#c0c0c0',
-                                    borderRadius: '10px',
-                                },
-                                '&::-webkit-scrollbar-thumb:hover': {
-                                    backgroundColor: '#9e9e9e',
-                                },
-                            }}
-                        >
-                            <Grid container spacing={2} columns={4}>
-                                {[...Array(TOTAL_TABLES)].map((_, index) => {
-                                    const tableNumber = index + 1;
-                                    const occupied = isTableOccupied(tableNumber);
+  sx={{
+    flexGrow: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'space-evenly',  // Ensures even spacing between rows
+  }}
+>
+  <Grid container spacing={2} columns={6}>
+    {[...Array(TOTAL_TABLES)].map((_, index) => {
+      const tableNumber = index + 1;
+      const occupied = isTableOccupied(tableNumber);
 
-                                    return (
-                                        <Grid item xs={1} key={tableNumber} sx={{ display: 'flex', justifyContent: 'center' }}>
-                                            <Paper
-                                                sx={{
-                                                    width: '100%',
-                                                    aspectRatio: '1/1',
-                                                    padding: 1,
-                                                    borderLeft: `6px solid ${occupied ? '#f44336' : '#66bb6a'}`,
-                                                    backgroundColor: occupied ? '#ffcdd2' : '#c8e6c9',
-                                                    cursor: 'pointer',
-                                                    transition: 'transform 0.2s, box-shadow 0.2s',
-                                                    borderRadius: 2,
-                                                    '&:hover': {
-                                                        transform: 'scale(1.05)',
-                                                        boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
-                                                    },
-                                                }}
-                                                onClick={() => handleTableClick(tableNumber)}
-                                            >
-                                                <Box sx={{ textAlign: 'center' }}>
-                                                    <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1 }}>
-                                                        Table {tableNumber}
-                                                    </Typography>
-                                                    <Typography variant="body2" sx={{ fontWeight: '500' }}>
-                                                        {occupied ? 'Occupée' : 'Disponible'}
-                                                    </Typography>
-                                                </Box>
-                                            </Paper>
-                                        </Grid>
-                                    );
-                                })}
-                            </Grid>
-                        </Box>
+      return (
+        <Grid item xs={1} key={tableNumber} sx={{ display: 'flex', justifyContent: 'center' }}>
+          <Paper
+            sx={{
+              width: '100%',
+              aspectRatio: '1/1',  // Ensure the paper element is a square
+              padding: 1,
+              borderLeft: `6px solid ${occupied ? '#f44336' : '#66bb6a'}`,
+              backgroundColor: occupied ? '#ffcdd2' : '#c8e6c9',
+              cursor: 'pointer',
+              transition: 'transform 0.2s, box-shadow 0.2s',
+              borderRadius: 2,
+              '&:hover': {
+                transform: 'scale(1.05)',
+                boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
+              },
+            }}
+            onClick={() => handleTableClick(tableNumber)}
+          >
+            <Box sx={{ textAlign: 'center' }}>
+              <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1 }}>
+                Table {tableNumber}
+              </Typography>
+              <Typography variant="body2" sx={{ fontWeight: '500' }}>
+                {occupied ? 'Occupée' : 'Disponible'}
+              </Typography>
+            </Box>
+          </Paper>
+        </Grid>
+      );
+    })}
+  </Grid>
+</Box>
+
                     </Paper>
                 </Grid>
 
                 {/* Pending Orders Section */}
-                <Grid item xs={12} md={7} sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <Grid item xs={12} md={4} sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                     <Paper
                         sx={{
                             flexGrow: 1,
@@ -214,9 +191,29 @@ const Dashboard = () => {
                             overflow: 'hidden',
                         }}
                     >
+                         <Box 
+            sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'space-between', 
+                mb: 1 
+            }}
+        >
                         <Typography variant="h5" sx={{ textAlign: 'center', fontWeight: 'bold', color: '#3949ab', mb: 2 }}>
                             Commandes en attente
                         </Typography>
+                         {/* Notification Icon for Pay Later Orders */}
+          
+                <IconButton onClick={handlePayLaterDialogOpen}>
+                    <Badge
+                        color="error"
+                        variant="dot"
+                        invisible={payLaterOrders.length === 0}
+                    >
+                        <NotificationsIcon fontSize="large" />
+                    </Badge>
+                </IconButton>
+            </Box>
                         <Box
                             sx={{
                                 flexGrow: 1,
@@ -238,7 +235,7 @@ const Dashboard = () => {
                                 },
                             }}
                         >
-                            <Stack spacing={2} sx={{ paddingRight: '8px' }}>
+                            <Stack spacing={1} sx={{ paddingRight: '1px' }}>
                                 {pendingOrders.map((order) => (
                                     <Paper
                                         key={order.OrderNumber}
@@ -276,53 +273,69 @@ const Dashboard = () => {
                     </Paper>
 
                     {/* Takeaway & Delivery Buttons */}
-                    <Box sx={{ display: 'flex', gap: 2 }}>
-                        <Button
-                            variant="contained"
-                            sx={{
-                                flexGrow: 1,
-                                padding: 1.5,
-                                fontWeight: 'bold',
-                                fontSize: '1.1rem',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 1,
-                                textTransform: 'none',
-                                backgroundColor: '#f50057',
-                                '&:hover': {
-                                    backgroundColor: '#c51162',
-                                },
-                                boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
-                            }}
-                            onClick={handleTakeawayClick}
-                        >
-                            <AddShoppingCartIcon />
-                            Nouvelle commande à emporter
-                        </Button>
+                    <Box sx={{ display: 'flex', gap: 2, mt: 3 }}>
+    <Button
+        variant="contained"
+        sx={{
+            flexGrow: 1,
+            padding: 2,
+            fontWeight: 'bold',
+            fontSize: '1.2rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 1,
+            textTransform: 'none',
+            background: 'linear-gradient(145deg, #ff1744, #d50000)',
+            color: 'white',
+            '&:hover': {
+                background: 'linear-gradient(145deg, #d50000, #b71c1c)',
+            },
+            boxShadow: '0 4px 10px rgba(0,0,0,0.3)',
+            borderRadius: 3,
+        }}
+        onClick={handleTakeawayClick}
+    >
+        <AddShoppingCartIcon sx={{ fontSize: '2rem' }} />
+        <Box sx={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
+                Commande à Emporter
+            </Typography>
+           
+        </Box>
+    </Button>
 
-                        <Button
-                            variant="contained"
-                            sx={{
-                                flexGrow: 1,
-                                padding: 1.5,
-                                fontWeight: 'bold',
-                                fontSize: '1.1rem',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 1,
-                                textTransform: 'none',
-                                backgroundColor: '#00c853',
-                                '&:hover': {
-                                    backgroundColor: '#009624',
-                                },
-                                boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
-                            }}
-                            onClick={handleDeliveryClick}
-                        >
-                            <DeliveryDiningIcon />
-                            Nouvelle commande de livraison
-                        </Button>
-                    </Box>
+    <Button
+        variant="contained"
+        sx={{
+            flexGrow: 1,
+            padding: 2,
+            fontWeight: 'bold',
+            fontSize: '1.2rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 1,
+            textTransform: 'none',
+            background: 'linear-gradient(145deg, #00e676, #00c853)',
+            color: 'white',
+            '&:hover': {
+                background: 'linear-gradient(145deg, #00c853, #009624)',
+            },
+            boxShadow: '0 4px 10px rgba(0,0,0,0.3)',
+            borderRadius: 3,
+        }}
+        onClick={handleDeliveryClick}
+    >
+        <DeliveryDiningIcon sx={{ fontSize: '2rem' }} />
+        <Box sx={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
+                Commande de Livraison
+            </Typography>
+        </Box>
+    </Button>
+</Box>
+
                 </Grid>
             </Grid>
 

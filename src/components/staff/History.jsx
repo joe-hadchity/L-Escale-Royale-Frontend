@@ -27,16 +27,9 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  IconButton,
-  Badge,
-  Menu,
-  Tooltip,
-  AppBar,
-  Toolbar,
 } from '@mui/material';
 import axios from 'axios';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import NotificationsIcon from '@mui/icons-material/Notifications';
 
 const History = () => {
   const [history, setHistory] = useState([]);
@@ -55,11 +48,6 @@ const History = () => {
   const [availablePrinters, setAvailablePrinters] = useState([]);
   const [orderToPrint, setOrderToPrint] = useState(null);
 
-  // Notification state
-  const [payLaterOrders, setPayLaterOrders] = useState([]);
-  const [anchorEl, setAnchorEl] = useState(null);
-  const openNotification = Boolean(anchorEl);
-
   // Fetch printers when the component mounts
   useEffect(() => {
     const fetchPrinters = async () => {
@@ -73,26 +61,6 @@ const History = () => {
     };
 
     fetchPrinters();
-  }, []);
-
-  // Function to fetch Pay Later orders
-  const fetchPayLaterOrders = async () => {
-    try {
-      const response = await axios.get(
-        `${process.env.REACT_APP_API_URL}/Order/GetOrderByStatus/Pay Later`
-      );
-      const responseData = Array.isArray(response.data) ? response.data : [response.data];
-      setPayLaterOrders(responseData);
-    } catch (error) {
-      console.error('Error fetching Pay Later orders:', error);
-    }
-  };
-
-  // Fetch Pay Later orders on mount and periodically
-  useEffect(() => {
-    fetchPayLaterOrders();
-    const interval = setInterval(fetchPayLaterOrders, 60000); // Refresh every 60 seconds
-    return () => clearInterval(interval);
   }, []);
 
   // Function to format the date as dd/MM/yyyy
@@ -266,7 +234,7 @@ const History = () => {
     ];
 
     // Items
-    order.Items.forEach((item) => {
+    order.Items.forEach(item => {
       const name = item.Name.padEnd(25, ' ');
       const quantity = item.Quantity.toString().padStart(3, ' ');
       const price = (item.Quantity * item.Price).toFixed(2).padStart(8, ' ');
@@ -300,7 +268,7 @@ const History = () => {
         type: 'text',
         value: 'Merci pour votre commande!',
         style: { textAlign: 'center', fontSize: '14px', fontStyle: 'italic' },
-      }
+      },
     );
 
     return printData;
@@ -342,16 +310,14 @@ const History = () => {
 
   // Function to generate invoice HTML
   const generateInvoiceHtml = (order) => {
-    const itemsRows = order.Items.map(
-      (item) => `
+    const itemsRows = order.Items.map(item => `
       <tr>
         <td>${item.Name}</td>
         <td>${item.Quantity}</td>
         <td>${item.Price.toFixed(2)} CFA</td>
         <td>${(item.Quantity * item.Price).toFixed(2)} CFA</td>
       </tr>
-    `
-    ).join('');
+    `).join('');
 
     const htmlContent = `
       <html>
@@ -398,237 +364,174 @@ const History = () => {
     return htmlContent;
   };
 
-  // Notification handlers
-  const handleNotificationClick = (event) => {
-    setAnchorEl(event.currentTarget);
-  };
-
-  const handleNotificationClose = () => {
-    setAnchorEl(null);
-  };
-
   return (
-    <Box sx={{ flexGrow: 1 }}>
-      {/* AppBar with Notification Icon */}
-      <AppBar position="static" sx={{ mb: 4 }}>
-        <Toolbar>
-          <Typography variant="h6" sx={{ flexGrow: 1 }}>
-            Historique des commandes
-          </Typography>
-          <Tooltip title="Commandes en attente de paiement">
-            <IconButton color="inherit" onClick={handleNotificationClick}>
-              <Badge
-                badgeContent={payLaterOrders.length > 0 ? payLaterOrders.length : null}
-                color="error"
-              >
-                <NotificationsIcon />
-              </Badge>
-            </IconButton>
-          </Tooltip>
-        </Toolbar>
-      </AppBar>
+    <Box sx={{ padding: 4 }}>
+      <Typography variant="h4" gutterBottom>
+        Historique des commandes
+      </Typography>
 
-      {/* Notification Menu */}
-      <Menu
-        anchorEl={anchorEl}
-        open={openNotification}
-        onClose={handleNotificationClose}
-        anchorOrigin={{
-          vertical: 'top',
-          horizontal: 'right',
-        }}
-        transformOrigin={{
-          vertical: 'top',
-          horizontal: 'right',
-        }}
-      >
-        {payLaterOrders.length > 0 ? (
-          payLaterOrders.map((order, index) => (
-            <MenuItem
-              key={index}
-              onClick={() => {
-                // Optionally, handle order click
-                handleNotificationClose();
-              }}
-            >
-              <ListItemText
-                primary={`Commande N° ${order.OrderNumber}`}
-                secondary={`Note: ${order.Note} Total: ${order.TotalPrice.toFixed(2)} CFA`}
-              />
-            </MenuItem>
-          ))
-        ) : (
-          <MenuItem onClick={handleNotificationClose}>
-            <ListItemText primary="Aucune commande en attente de paiement" />
-          </MenuItem>
-        )}
-      </Menu>
-
-      {/* Main Content */}
-      <Box sx={{ padding: 4 }}>
-        {/* Search Bar */}
-        <Box sx={{ display: 'flex', gap: 2, marginBottom: 4 }}>
-          <TextField
-            label="Rechercher par numéro de commande"
-            value={searchOrder}
-            onChange={(e) => setSearchOrder(e.target.value)}
-            fullWidth
-          />
-          <TextField
-            label="Rechercher par date"
-            type="date"
-            value={searchDate}
-            onChange={(e) => setSearchDate(e.target.value)}
-            InputLabelProps={{ shrink: true }}
-            fullWidth
-          />
-          <Button
-            variant="contained"
-            onClick={() => fetchFilteredHistory()}
-            sx={{
-              padding: '8px 24px',
-              fontSize: '16px',
-              minWidth: '120px',
-              textAlign: 'center',
-              borderRadius: '8px',
-            }}
-          >
-            Rechercher
-          </Button>
-        </Box>
-
-        {/* Display Loading State */}
-        {loading && (
-          <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-            <CircularProgress />
-          </Box>
-        )}
-
-        {/* Display Error if Exists */}
-        {error && (
-          <Typography variant="body1" color="error" gutterBottom>
-            {error}
-          </Typography>
-        )}
-
-        {/* History Table */}
-        {!loading && history.length > 0 && (
-          <TableContainer component={Paper}>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>#</TableCell>
-                  <TableCell>Créé par</TableCell>
-                  <TableCell>Date de commande</TableCell>
-                  <TableCell>Numéro de commande</TableCell>
-                  <TableCell>Type</TableCell>
-                  <TableCell>Statut</TableCell>
-                  <TableCell>Numéro de table</TableCell>
-                  <TableCell>Frais de livraison</TableCell>
-                  <TableCell>Emplacement</TableCell>
-                  <TableCell>Prix total (CFA)</TableCell>
-                  <TableCell>Articles</TableCell>
-                  <TableCell>Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {history.map((order, index) => (
-                  <TableRow key={index}>
-                    <TableCell>{index + 1 + page * rowsPerPage}</TableCell>
-                    <TableCell>{order.Created_by || 'N/A'}</TableCell>
-                    <TableCell>{order.DateOfOrder || 'N/A'}</TableCell>
-                    <TableCell>{order.OrderNumber || 'N/A'}</TableCell>
-                    <TableCell>{order.Type || 'N/A'}</TableCell>
-                    <TableCell>{order.Status || 'N/A'}</TableCell>
-                    <TableCell>{order.TableNumber || 'N/A'}</TableCell>
-                    <TableCell>
-                      {order.DeleiveryCharge ? `${order.DeleiveryCharge.toFixed(2)} ` : 'N/A'}
-                    </TableCell>
-                    <TableCell>{order.Location || 'N/A'}</TableCell>
-                    <TableCell>
-                      {order.TotalPrice ? `${order.TotalPrice.toFixed(2)} ` : 'N/A'}
-                    </TableCell>
-                    <TableCell>
-                      {/* Accordion for displaying items */}
-                      {order.Items && order.Items.length > 0 ? (
-                        <Accordion>
-                          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                            <Typography>Voir les articles ({order.Items.length})</Typography>
-                          </AccordionSummary>
-                          <AccordionDetails>
-                            <List>
-                              {order.Items.map((item, i) => (
-                                <ListItem key={i}>
-                                  <ListItemText
-                                    primary={`Nom: ${item.Name || 'Nom indisponible'}`}
-                                    secondary={`Quantité: ${item.Quantity}`}
-                                  />
-                                </ListItem>
-                              ))}
-                            </List>
-                          </AccordionDetails>
-                        </Accordion>
-                      ) : (
-                        'Aucun article'
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Button variant="outlined" onClick={() => handlePrintOrder(order)}>
-                        Imprimer
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-            {/* Pagination component */}
-            <TablePagination
-              component="div"
-              count={-1} // Indeterminate count to handle unknown total
-              page={page}
-              onPageChange={handlePageChange}
-              rowsPerPage={rowsPerPage}
-              onRowsPerPageChange={handleRowsPerPageChange}
-              labelRowsPerPage="Commandes par page"
-            />
-          </TableContainer>
-        )}
-
-        {/* Display message if no history found */}
-        {!loading && history.length === 0 && !error && (
-          <Typography variant="body1" color="textSecondary" gutterBottom>
-            Aucun résultat trouvé.
-          </Typography>
-        )}
-
-        {/* Printer Selection Dialog */}
-        <Dialog open={openPrintDialog} onClose={() => setOpenPrintDialog(false)}>
-          <DialogTitle>Sélectionner une imprimante</DialogTitle>
-          <DialogContent>
-            <FormControl fullWidth>
-              <InputLabel>Imprimante</InputLabel>
-              <Select
-                value={selectedPrinter}
-                onChange={(e) => setSelectedPrinter(e.target.value)}
-              >
-                {availablePrinters.map((printer, index) => (
-                  <MenuItem key={index} value={printer.name}>
-                    {printer.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setOpenPrintDialog(false)} color="secondary">
-              Annuler
-            </Button>
-            <Button onClick={handleConfirmPrint} variant="contained" color="primary">
-              Imprimer
-            </Button>
-          </DialogActions>
-        </Dialog>
+      {/* Search Bar */}
+      <Box sx={{ display: 'flex', gap: 2, marginBottom: 4 }}>
+        <TextField
+          label="Rechercher par numéro de commande"
+          value={searchOrder}
+          onChange={(e) => setSearchOrder(e.target.value)}
+          fullWidth
+        />
+        <TextField
+          label="Rechercher par date"
+          type="date"
+          value={searchDate}
+          onChange={(e) => setSearchDate(e.target.value)}
+          InputLabelProps={{ shrink: true }}
+          fullWidth
+        />
+        <Button
+          variant="contained"
+          onClick={() => fetchFilteredHistory()}
+          sx={{
+            padding: '8px 24px',
+            fontSize: '16px',
+            minWidth: '120px',
+            textAlign: 'center',
+            borderRadius: '8px',
+          }}
+        >
+          Rechercher
+        </Button>
       </Box>
+
+      {/* Display Loading State */}
+      {loading && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+          <CircularProgress />
+        </Box>
+      )}
+
+      {/* Display Error if Exists */}
+      {error && (
+        <Typography variant="body1" color="error" gutterBottom>
+          {error}
+        </Typography>
+      )}
+
+      {/* History Table */}
+      {!loading && history.length > 0 && (
+        <TableContainer component={Paper}>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>#</TableCell>
+                <TableCell>Créé par</TableCell>
+                <TableCell>Date de commande</TableCell>
+                <TableCell>Numéro de commande</TableCell>
+                <TableCell>Type</TableCell>
+                <TableCell>Statut</TableCell>
+                <TableCell>Numéro de table</TableCell>
+                <TableCell>Frais de livraison</TableCell>
+                <TableCell>Emplacement</TableCell>
+                <TableCell>Prix total (CFA)</TableCell>
+                <TableCell>Articles</TableCell>
+                <TableCell>Actions</TableCell> {/* New Actions Column */}
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {history.map((order, index) => (
+                <TableRow key={index}>
+                  <TableCell>{index + 1 + page * rowsPerPage}</TableCell>
+                  <TableCell>{order.Created_by || 'N/A'}</TableCell>
+                  <TableCell>{order.DateOfOrder || 'N/A'}</TableCell>
+                  <TableCell>{order.OrderNumber || 'N/A'}</TableCell>
+                  <TableCell>{order.Type || 'N/A'}</TableCell>
+                  <TableCell>{order.Status || 'N/A'}</TableCell>
+                  <TableCell>{order.TableNumber || 'N/A'}</TableCell>
+                  <TableCell>
+                    {order.DeleiveryCharge ? `${order.DeleiveryCharge.toFixed(2)} ` : 'N/A'}
+                  </TableCell>
+                  <TableCell>{order.Location || 'N/A'}</TableCell>
+                  <TableCell>
+                    {order.TotalPrice ? `${order.TotalPrice.toFixed(2)} ` : 'N/A'}
+                  </TableCell>
+                  <TableCell>
+                    {/* Accordion for displaying items */}
+                    {order.Items && order.Items.length > 0 ? (
+                      <Accordion>
+                        <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                          <Typography>Voir les articles ({order.Items.length})</Typography>
+                        </AccordionSummary>
+                        <AccordionDetails>
+                          <List>
+                            {order.Items.map((item, i) => (
+                              <ListItem key={i}>
+                                <ListItemText
+                                  primary={`Nom: ${item.Name || 'Nom indisponible'}`}
+                                  secondary={`Quantité: ${item.Quantity}`}
+                                />
+                              </ListItem>
+                            ))}
+                          </List>
+                        </AccordionDetails>
+                      </Accordion>
+                    ) : (
+                      'Aucun article'
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <Button variant="outlined" onClick={() => handlePrintOrder(order)}>
+                      Imprimer
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+          {/* Pagination component */}
+          <TablePagination
+            component="div"
+            count={-1} // Indeterminate count to handle unknown total
+            page={page}
+            onPageChange={handlePageChange}
+            rowsPerPage={rowsPerPage}
+            onRowsPerPageChange={handleRowsPerPageChange}
+            labelRowsPerPage="Commandes par page"
+          />
+        </TableContainer>
+      )}
+
+      {/* Display message if no history found */}
+      {!loading && history.length === 0 && !error && (
+        <Typography variant="body1" color="textSecondary" gutterBottom>
+          Aucun résultat trouvé.
+        </Typography>
+      )}
+
+      {/* Printer Selection Dialog */}
+      <Dialog open={openPrintDialog} onClose={() => setOpenPrintDialog(false)}>
+        <DialogTitle>Sélectionner une imprimante</DialogTitle>
+        <DialogContent>
+          <FormControl fullWidth>
+            <InputLabel>Imprimante</InputLabel>
+            <Select
+              value={selectedPrinter}
+              onChange={(e) => setSelectedPrinter(e.target.value)}
+            >
+              {availablePrinters.map((printer, index) => (
+                <MenuItem key={index} value={printer.name}>
+                  {printer.name}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenPrintDialog(false)} color="secondary">
+            Annuler
+          </Button>
+          <Button onClick={handleConfirmPrint} variant="contained" color="primary">
+            Imprimer
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

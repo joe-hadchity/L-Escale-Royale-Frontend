@@ -12,6 +12,10 @@ import {
   TableCell,
   Box,
   Divider,
+  MenuItem,
+  FormControl,
+  Select,
+  InputLabel,
 } from '@mui/material';
 import { Line, Pie, Bar } from 'react-chartjs-2';
 import { Chart, CategoryScale, LinearScale, LineElement, PointElement, Tooltip, Legend, ArcElement, BarElement } from 'chart.js';
@@ -24,6 +28,7 @@ const Dashboard = () => {
   const [categoryStats, setCategoryStats] = useState([]);
   const [topItems, setTopItems] = useState([]);
   const [grossByDate, setGrossByDate] = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState('');
 
   useEffect(() => {
     // Fetch total revenue by date for the line chart
@@ -110,15 +115,12 @@ const Dashboard = () => {
     ],
   };
 
-  // Top 3 Items by Category Data
-  const topItemsData = topItems.map((category) => ({
-    title: `Top 3 ${category._id}`,
-    items: category.items.map((item) => ({
-      name: item.name,
-      sales: item.totalQuantity,
-      revenue: item.totalItemPrice,
-    })),
-  }));
+  // Handle category selection for top items display
+  const handleCategoryChange = (event) => {
+    setSelectedCategory(event.target.value);
+  };
+
+  const selectedTopItems = topItems.find((category) => category._id === selectedCategory)?.items || [];
 
   return (
     <Box sx={{ padding: 4 }}>
@@ -161,7 +163,7 @@ const Dashboard = () => {
         </Grid>
       </Grid>
 
-      {/* Pie Chart for Sales by Category */}
+      {/* Pie and Bar Charts */}
       <Grid container spacing={4} sx={{ marginBottom: 4 }}>
         <Grid item xs={12} md={6}>
           <Paper elevation={3} sx={{ padding: 3 }}>
@@ -183,37 +185,52 @@ const Dashboard = () => {
         </Grid>
       </Grid>
 
-      {/* Top 3 Items by Category */}
+      {/* Dropdown to Select Category and Display Top Items */}
       <Grid container spacing={4}>
-        {topItemsData.map((category, index) => (
-          <Grid item xs={12} md={6} key={index}>
-            <Paper elevation={3} sx={{ padding: 3 }}>
-              <Typography variant="h6" gutterBottom>
-                {category.title}
-              </Typography>
-              <TableContainer>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Article</TableCell>
-                      <TableCell>Ventes</TableCell>
-                      <TableCell>Revenu</TableCell>
+        <Grid item xs={12}>
+          <Paper elevation={3} sx={{ padding: 3 }}>
+            <Typography variant="h6" gutterBottom>
+              Top 3 Items by Category
+            </Typography>
+            <FormControl fullWidth sx={{ mb: 2 }}>
+              <InputLabel id="category-select-label">Select Category</InputLabel>
+              <Select
+                labelId="category-select-label"
+                value={selectedCategory}
+                onChange={handleCategoryChange}
+                label="Select Category"
+              >
+                {topItems.map((category) => (
+                  <MenuItem key={category._id} value={category._id}>
+                    {category._id}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            {/* Display Top Items for Selected Category */}
+            <TableContainer>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Article</TableCell>
+                    <TableCell>Ventes</TableCell>
+                    <TableCell>Revenu</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {selectedTopItems.map((item, idx) => (
+                    <TableRow key={idx}>
+                      <TableCell>{item.name}</TableCell>
+                      <TableCell>{item.totalQuantity}</TableCell>
+                      <TableCell>{`$${item.totalItemPrice}`}</TableCell>
                     </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {category.items.map((item, idx) => (
-                      <TableRow key={idx}>
-                        <TableCell>{item.name}</TableCell>
-                        <TableCell>{item.sales}</TableCell>
-                        <TableCell>{`$${item.revenue}`}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </Paper>
-          </Grid>
-        ))}
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Paper>
+        </Grid>
       </Grid>
     </Box>
   );

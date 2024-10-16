@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Box, Button, TextField, Typography, Container, Alert } from '@mui/material';
+import { Box, Button, TextField, Container, Alert } from '@mui/material';
 import axios from 'axios';
 import logo from '../assets/l-escale-royale-logo.png';
 import Cookies from 'js-cookie'; 

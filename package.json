@@ -4,58 +4,69 @@
   "version": "0.1.0",
   "main": "public/electron.js",
   "private": true,
+  "homepage": "./",
   "dependencies": {
+    "@electron/remote": "^2.1.2",
     "@emotion/react": "^11.13.3",
     "@emotion/styled": "^11.13.0",
     "@mui/icons-material": "^6.1.2",
     "@mui/material": "^6.1.2",
     "@mui/system": "^6.1.2",
     "@mui/x-data-grid": "^7.18.0",
-    "@testing-library/jest-dom": "^5.17.0",
-    "@testing-library/react": "^13.4.0",
-    "@testing-library/user-event": "^13.5.0",
     "axios": "^1.7.7",
     "bootstrap": "^5.3.3",
-    "chart.js": "^4.4.4",
+    "chart.js": "^4.4.5",
+    "electron-updater": "^6.3.9",
+    "electron-is-dev": "^3.0.1",
+    "electron-pos-printer": "^1.3.6",
     "js-cookie": "^3.0.5",
     "react": "^18.3.1",
-    "react-bootstrap": "^2.10.4",
     "react-chartjs-2": "^5.2.0",
     "react-dom": "^18.3.1",
-    "react-icons": "^5.3.0",
     "react-perfect-scrollbar": "^1.5.8",
     "react-router-dom": "^6.26.1",
-    "react-scripts": "5.0.1",
-    "react-scrollbars-custom": "^4.1.1",
-    "react-simple-keyboard": "^3.8.5",
-    "react-toastify": "^10.0.5",
-    "web-vitals": "^2.1.4"
+    "react-scripts": "^5.0.1",
+    "react-simple-keyboard": "^3.8.11",
+    "react-toastify": "^10.0.6"
   },
   "scripts": {
-    "start": "react-scripts start",
-    "electron": "electron .",
+    "start": "concurrently \"npm run react-start\" \"npm run electron\"",
+    "react-start": "react-scripts start",
     "build": "react-scripts build",
-    "dist": "electron-builder",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject",
-    "package-win": "electron-packager . EscaleRoyalePOS --platform=win32 --arch=x64 --out=dist --overwrite"
+    "electron": "wait-on http://localhost:3000 && electron .",
+    "electron-pack": "electron-builder"
   },
   "build": {
     "appId": "com.escaleroyale.pos",
+    "productName": "DotDev Consulting POS",
     "directories": {
       "buildResources": "build",
       "output": "dist"
     },
+    "files": [
+      "public/electron.js",
+      "public/preload.js",
+      "build/**/*",
+      "public/**/*",
+      "node_modules/**/*"
+    ],
     "win": {
       "target": "nsis",
-      "icon": "build/icon.ico"
+      "icon": "public/icon.ico",
+      "publisherName": "DotDev Consulting",
+      "artifactName": "${productName}-Setup-${version}.exe"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": true,
+      "allowElevation": true,
+      "createDesktopShortcut": true
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "joe-hadchity",
+      "repo": "L-Escale-Royale-Frontend"
     }
-  },
-  "eslintConfig": {
-    "extends": [
-      "react-app",
-      "react-app/jest"
-    ]
   },
   "browserslist": {
     "production": [
@@ -70,11 +81,9 @@
     ]
   },
   "devDependencies": {
-    "autoprefixer": "^10.4.20",
-    "electron": "^32.0.1",
-    "electron-builder": "^25.1.7",
-    "electron-packager": "^17.1.2",
-    "postcss": "^8.4.44",
-    "tailwindcss": "^3.4.10"
+    "concurrently": "^9.0.1",
+    "electron-builder": "^25.1.8",
+   
+    "wait-on": "^8.0.1"
   }
 }

@@ -1,5 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { TableContainer, Table, TableBody, TableCell, TableHead, TableRow, Paper, Button, Dialog, DialogActions, DialogContent, DialogTitle, TextField, Typography, Box } from '@mui/material';
+import {
+    TableContainer,
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableRow,
+    Paper,
+    Button,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogTitle,
+    TextField,
+    Typography,
+    Box,
+    Select,
+    MenuItem,
+    FormControl,
+    InputLabel
+} from '@mui/material';
 import axios from 'axios';
 
 const CategoryManagement = () => {
@@ -9,6 +29,7 @@ const CategoryManagement = () => {
     const [currentCategory, setCurrentCategory] = useState(null);
     const [categoryName, setCategoryName] = useState('');
     const [categoryDescription, setCategoryDescription] = useState('');
+    const [location, setLocation] = useState(''); // NEW: Location state
 
     useEffect(() => {
         fetchCategories();
@@ -29,11 +50,13 @@ const CategoryManagement = () => {
             setCurrentCategory(category);
             setCategoryName(category.Name || '');
             setCategoryDescription(category.Description || '');
+            setLocation(category.Location || ''); // NEW: Pre-fill location if available
         } else {
             setModalTitle('Ajouter une catégorie');
             setCurrentCategory(null);
             setCategoryName('');
             setCategoryDescription('');
+            setLocation(''); // Reset location
         }
         setShowModal(true);
     };
@@ -45,18 +68,18 @@ const CategoryManagement = () => {
         }
 
         try {
+            const categoryData = {
+                Name: categoryName,
+                Description: categoryDescription,
+                Location: location 
+            };
+
             if (currentCategory && currentCategory.Name) {
                 const updateUrl = `${process.env.REACT_APP_API_URL}/Category/UpdateCategoryByName/${encodeURIComponent(currentCategory.Name)}`;
-                await axios.put(updateUrl, {
-                    Name: categoryName,
-                    Description: categoryDescription
-                });
+                await axios.put(updateUrl, categoryData);
             } else {
                 const createUrl = `${process.env.REACT_APP_API_URL}/Category/CreateCategory`;
-                await axios.post(createUrl, {
-                    Name: categoryName,
-                    Description: categoryDescription
-                });
+                await axios.post(createUrl, categoryData);
             }
 
             setShowModal(false);
@@ -88,7 +111,6 @@ const CategoryManagement = () => {
                 Gestion des Catégories
             </Typography>
 
-            {/* Button under title */}
             <Box sx={{ marginBottom: 4 }}>
                 <Button variant="contained" color="primary" onClick={() => handleShowModal()}>
                     Ajouter une catégorie
@@ -102,6 +124,7 @@ const CategoryManagement = () => {
                             <TableCell>#</TableCell>
                             <TableCell>Nom de la Catégorie</TableCell>
                             <TableCell>Description</TableCell>
+                            <TableCell>Lieu</TableCell> {/* NEW: Location column */}
                             <TableCell align="center">Actions</TableCell>
                         </TableRow>
                     </TableHead>
@@ -112,6 +135,7 @@ const CategoryManagement = () => {
                                     <TableCell>{index + 1}</TableCell>
                                     <TableCell>{category.Name || 'Nom indisponible'}</TableCell>
                                     <TableCell>{category.Description || 'Aucune description'}</TableCell>
+                                    <TableCell>{category.Location || 'Non spécifié'}</TableCell> {/* Display location */}
                                     <TableCell align="center">
                                         <Button
                                             variant="outlined"
@@ -133,7 +157,7 @@ const CategoryManagement = () => {
                             ))
                         ) : (
                             <TableRow>
-                                <TableCell colSpan={4} align="center">
+                                <TableCell colSpan={5} align="center">
                                     Aucune catégorie trouvée
                                 </TableCell>
                             </TableRow>
@@ -142,7 +166,6 @@ const CategoryManagement = () => {
                 </Table>
             </TableContainer>
 
-            {/* Modal for Add/Update Category */}
             <Dialog open={showModal} onClose={() => setShowModal(false)} maxWidth="sm" fullWidth>
                 <DialogTitle>{modalTitle}</DialogTitle>
                 <DialogContent>
@@ -161,6 +184,18 @@ const CategoryManagement = () => {
                             multiline
                             rows={4}
                         />
+                        {/* NEW: Select location */}
+                        <FormControl fullWidth>
+                            <InputLabel>Lieu</InputLabel>
+                            <Select
+                                value={location}
+                                onChange={(e) => setLocation(e.target.value)}
+                            >
+                                <MenuItem value="Kitchen">Cuisine</MenuItem>
+                                <MenuItem value="Oven">Four à pizza</MenuItem>
+                                <MenuItem value="No Kitchen">Aucun</MenuItem>
+                            </Select>
+                        </FormControl>
                     </Box>
                 </DialogContent>
                 <DialogActions>

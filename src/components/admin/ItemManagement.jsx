@@ -152,7 +152,11 @@ const ItemManagement = () => {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
   };
-
+  const handleAddIngredient = (ingredient) => {
+    if (!ingredients.some(ing => ing.Name === ingredient.Name)) {
+      setIngredients([...ingredients, ingredient]);
+    }
+  };
   const handleShowModal = (item = null) => {
     if (item) {
       console.log("Editing item:", item);
@@ -217,6 +221,10 @@ const ItemManagement = () => {
     } catch (error) {
       console.error("Error deleting item:", error);
     }
+  };
+  const handleRemoveIngredient = (index) => {
+    const updatedIngredients = ingredients.filter((_, i) => i !== index);
+    setIngredients(updatedIngredients);
   };
 
   return (
@@ -302,10 +310,86 @@ const ItemManagement = () => {
         )
       )}
 
-      <Dialog open={showModal} onClose={() => setShowModal(false)} maxWidth="sm" fullWidth>
+<Dialog open={showModal} onClose={() => setShowModal(false)} maxWidth="sm" fullWidth>
         <DialogTitle>{modalTitle}</DialogTitle>
         <DialogContent>
-          {/* Dialog content for adding/updating items */}
+          <FormControl fullWidth sx={{ marginBottom: 2 }}>
+            <InputLabel>Catégorie d'ingrédient</InputLabel>
+            <Select value={selectedIngredientCategory} onChange={handleIngredientCategoryChange}>
+              <MenuItem value="">
+                <em>Sélectionner une catégorie d'ingrédient</em>
+              </MenuItem>
+              {ingredientsCategories.map((category, index) => (
+                <MenuItem key={index} value={category.categoryName}>
+                  {category.categoryName}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          <FormControl fullWidth sx={{ marginBottom: 2 }}>
+            <InputLabel>Ingrédients</InputLabel>
+            <Select
+              multiple
+              value={ingredients}
+              onChange={(e) => setIngredients(e.target.value)}
+              renderValue={(selected) => selected.map((ing) => ing.Name).join(", ")}
+            >
+              {availableIngredients.map((ingredient, index) => (
+                <MenuItem key={index} value={ingredient}>
+                  {ingredient.Name} - {ingredient.Price} €
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          {ingredients.length > 0 && (
+            <Box sx={{ marginTop: 2 }}>
+              <Typography variant="h6">Ingrédients Sélectionnés:</Typography>
+              {ingredients.map((ingredient, index) => (
+                <Chip
+                  key={index}
+                  label={`${ingredient.Name} - ${ingredient.Price} €`}
+                  onDelete={() => handleRemoveIngredient(index)}
+                  sx={{ marginRight: 1, marginBottom: 1 }}
+                />
+              ))}
+            </Box>
+          )}
+
+          <TextField
+            fullWidth
+            margin="normal"
+            label="Nom de l'Article"
+            value={itemName}
+            onChange={(e) => setItemName(e.target.value)}
+          />
+
+          <TextField
+            fullWidth
+            margin="normal"
+            label="Description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+
+          <TextField
+            fullWidth
+            margin="normal"
+            label="Prix Dine-In"
+            type="number"
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+          />
+
+          <TextField
+            fullWidth
+            margin="normal"
+            label="Prix Livraison"
+            type="number"
+            value={pricedel}
+            onChange={(e) => setPriceDelivery(e.target.value)}
+          />
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setShowModal(false)} color="secondary">
