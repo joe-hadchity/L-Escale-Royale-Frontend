@@ -3,41 +3,47 @@ import { useNavigate } from 'react-router-dom';
 import { Box, Button, TextField, Container, Alert } from '@mui/material';
 import axios from 'axios';
 import logo from '../assets/l-escale-royale-logo.png';
-import Cookies from 'js-cookie'; 
+import Cookies from 'js-cookie';
 
 const Login = () => {
     const navigate = useNavigate();
-    const [credentials, setCredentials] = useState({ username: '', pin: '' });
+    const [credentials, setCredentials] = useState({ Id: '', pin: '' });
     const [error, setError] = useState(null);
 
-    const apiUrl = `${process.env.REACT_APP_API_URL}/auth/login`;
+    const apiUrl =` ${process.env.REACT_APP_API_URL}/auth/login`;
 
     const handleInputChange = (e) => {
         setCredentials({ ...credentials, [e.target.name]: e.target.value });
     };
 
     const extractValueFromResponse = (responseString, key) => {
-        const regex = new RegExp(`"${key}"\\s*:\\s*"([^"]+)"`);
+        const regex = new RegExp(`"${key}" \\s*:\\s*"([^"]+)"` );
         const match = responseString.match(regex);
         return match ? match[1] : null;
     };
 
     const handleLogin = async (e) => {
         e.preventDefault();
-
+    
         try {
-            const response = await axios.post(apiUrl, {
-                Username: credentials.username,
+            // Ensure Id is sent as an integer
+            const loginPayload = {
+                Id: parseInt(credentials.Id, 10),  // Parse as integer
                 Pin: credentials.pin,
-            });
-
+            };
+    
+            console.log("Sending login request with:", loginPayload);
+    
+            const response = await axios.post(apiUrl, loginPayload);
+    
+            // Handle response
             if (response.status === 200) {
                 const responseString = response.data;
                 const username = extractValueFromResponse(responseString, "Username");
                 const role = extractValueFromResponse(responseString, "Role");
-
+    
                 Cookies.set('user', JSON.stringify({ username, role }), { expires: 1 });
-
+    
                 if (role === 'admin') {
                     navigate('/admin', { replace: true });
                 } else if (role === 'staff') {
@@ -47,9 +53,11 @@ const Login = () => {
                 setError('Identifiants incorrects');
             }
         } catch (err) {
+            console.log("Error during login:", err);
             setError(err.response?.data?.Message || 'An error occurred. Please try again.');
         }
     };
+    
 
     return (
         <Container component="main" maxWidth="xs">
@@ -67,18 +75,17 @@ const Login = () => {
             >
                 {/* Logo and Title */}
                 <img src={logo} alt="L'Escale Royale" style={{ width: '200px', marginBottom: '20px' }} />
-               
 
                 {/* Form */}
                 <Box component="form" onSubmit={handleLogin} sx={{ mt: 3 }}>
                     <TextField
                         margin="normal"
                         fullWidth
-                        id="username"
-                        label="Nom d'utilisateur"
-                        name="username"
-                        autoComplete="username"
-                        value={credentials.username}
+                        id="Id"
+                        label="ID"
+                        name="Id"  // Changed to 'Id'
+                        autoComplete="id"
+                        value={credentials.Id}
                         onChange={handleInputChange}
                         autoFocus
                         required

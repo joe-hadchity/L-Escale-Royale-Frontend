@@ -1,8 +1,6 @@
-// Order.jsx
-
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Grid,
   Container,
@@ -22,12 +20,13 @@ import PaymentDialog from './components/PaymentDialog';
 import CashPaymentDialog from './components/CashPaymentDialog';
 import DiscountDialog from './components/DiscountDialog';
 import AuthorizationDialog from './components/AuthorizationDialog';
-
+import CustomerNumberDialog from './components/CustomerNumberDialog';
 import { useOrder } from '../../context/OrderContext';
 
 const Order = () => {
-  // Get selectedOrder from context
-  const { selectedOrder } = useOrder();
+  const { state } = useLocation(); // Get state from the navigation
+  const { isNewOrder, orderNumber: orderNumberFromState } = state || {};
+  const { selectedOrder, setSelectedOrder } = useOrder();
   const navigate = useNavigate();
 
   // Initialize orderType based on selectedOrder.Type
@@ -57,8 +56,9 @@ const Order = () => {
   const [addOns, setAddOns] = useState([]);
   const [ingredientsCategories, setIngredientsCategories] = useState([]);
   const [availableIngredients, setAvailableIngredients] = useState([]);
-  const [selectedIngredientCategory, setSelectedIngredientCategory] =
-    useState('');
+  const [selectedIngredientCategory, setSelectedIngredientCategory] = useState(
+    ''
+  );
   const [note, setNote] = useState(''); // State for item note
   const [isOnTheHouse, setIsOnTheHouse] = useState(false); // State for "On the House"
 
@@ -72,19 +72,46 @@ const Order = () => {
   const [changeDue, setChangeDue] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-
-  // State for Authorization Dialog
+  const [isCustomerDialogOpen, setCustomerDialogOpen] = useState(false); // Dialog visibility
+  const [customerInfo, setCustomerInfo] = useState(null);
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
-  const [pendingAction, setPendingAction] = useState(null); // 'delete'
+  const [pendingAction, setPendingAction] = useState(null);
   const [pendingItem, setPendingItem] = useState(null);
+  const [status, setStatus] = useState('Pending');
+  const [deliveryCharge, setDeliveryCharge] = useState(
+    selectedOrder?.DeliveryCharge || 0
+  );
+
+  useEffect(() => {
+    if (state && state.orderNumber) {
+      setOrderNumber(state.orderNumber);
+    }
+  }, [state]);
+
+  useEffect(() => {
+    if (isNewOrder) {
+      const generatedOrderNumber = new Date().getTime(); // Generate temporary order number
+      setOrderNumber(generatedOrderNumber);
+    } else if (state && state.orderNumber) {
+      setOrderNumber(state.orderNumber);
+    }
+  }, [state, isNewOrder]);
+
+  useEffect(() => {
+    if (orderType === 'Delivery') {
+      setCustomerDialogOpen(true); // Open dialog when Delivery is selected
+    } else {
+      setCustomerDialogOpen(false); // Close the dialog when switching away from Delivery
+    }
+  }, [orderType]);
 
   // Fetch categories
   useEffect(() => {
     const fetchCategories = async () => {
       try {
         setLoading(true);
-        const response = await axios.get(
-          `${process.env.REACT_APP_API_URL}/Category/GetAllCategories`
+        const response = await axios.get(`
+          ${process.env.REACT_APP_API_URL}/Category/GetAllCategories`
         );
         setCategories(response.data);
         setSelectedCategory(response.data[0]?.Name);
@@ -104,8 +131,8 @@ const Order = () => {
     const fetchItems = async () => {
       try {
         setLoading(true);
-        const response = await axios.get(
-          `${process.env.REACT_APP_API_URL}/Item/GetItemsByCategory/${selectedCategory}`
+        const response = await axios.get(`
+          ${process.env.REACT_APP_API_URL}/Item/GetItemsByCategory/${selectedCategory}`
         );
 
         // Map items to include CategoryName and CategoryLocation
@@ -113,8 +140,8 @@ const Order = () => {
           ...item,
           CategoryName: selectedCategory,
           CategoryLocation:
-            categories.find((cat) => cat.Name === selectedCategory)
-              ?.Location || 'No Kitchen',
+            categories.find((cat) => cat.Name === selectedCategory)?.Location ||
+            'No Kitchen',
         }));
 
         setItems(
@@ -135,8 +162,8 @@ const Order = () => {
   useEffect(() => {
     const fetchIngredients = async () => {
       try {
-        const response = await axios.get(
-          `${process.env.REACT_APP_API_URL}/Ingredients/GetAllIngredients`
+        const response = await axios.get(`
+          ${process.env.REACT_APP_API_URL}/Ingredients/GetAllIngredients`
         );
         const parsedIngredients = response.data.map((categoryObj) => {
           const categoryName = Object.keys(categoryObj).find(
@@ -183,23 +210,42 @@ const Order = () => {
       if (item.isOnTheHouse) {
         return 0;
       }
+  
       const basePrice = orderType === 'Dine In' ? item.price : item.pricedel;
-      const addOnsPrice = item.addOns
-        ? item.addOns.reduce((acc, addOn) => acc + addOn.Price, 0)
-        : 0;
+  
+      // Calculate the total price of add-ons by summing the prices directly
+      const addOnsPrice = item.addOns?.reduce((acc, addOn) => {
+        return acc + (addOn.Price || 0); // Use the price directly from the addOn object
+      }, 0) || 0;
+  
+      console.log("Item Name:", item.Name);
+      console.log("Base Price:", basePrice);
+      console.log("Add-ons:", item.addOns);
+      console.log("Add-ons Price:", addOnsPrice);
+      console.log("Total Price:", basePrice + addOnsPrice);
+  
       return basePrice + addOnsPrice;
     },
     [orderType]
   );
-
+  
+  
+  
+  
   // Calculate total price
   const calculateTotalPrice = useCallback(() => {
     const totalPrice = cart.reduce((total, cartItem) => {
       return total + calculateItemPrice(cartItem) * cartItem.quantity;
     }, 0);
+    console.log(totalPrice);
     const discountedPrice = totalPrice - (totalPrice * discount) / 100;
     return Math.max(discountedPrice, 0);
   }, [cart, discount, calculateItemPrice]);
+
+  const handleCustomerInfoSubmit = (info) => {
+    setCustomerInfo(info); // Store customer info
+    setCustomerDialogOpen(false); // Close the dialog after submission
+  };
 
   // Handle quantity change for new items only
   const handleQuantityChange = useCallback((item, type) => {
@@ -214,8 +260,7 @@ const Order = () => {
           cartItem._id === item._id &&
           JSON.stringify(cartItem.removals) ===
             JSON.stringify(item.removals) &&
-          JSON.stringify(cartItem.addOns) ===
-            JSON.stringify(item.addOns) &&
+          JSON.stringify(cartItem.addOns) === JSON.stringify(item.addOns) &&
           cartItem.note === item.note &&
           cartItem.isOnTheHouse === item.isOnTheHouse;
 
@@ -286,15 +331,16 @@ const Order = () => {
 
   // Handle placing the order
   const handlePlaceOrder = useCallback(() => {
-    if (orderType === 'Dine In' && !orderNumber) {
+    if (orderType === 'Dine In' && !tableNumber) {
       toast.warn('Please select a table number for Dine In orders.', {
         position: 'bottom-center',
         autoClose: 3000,
       });
       return;
     }
+    // Proceed to payment
     setOpenPaymentDialog(true);
-  }, [orderType, orderNumber]);
+  }, [orderType, tableNumber]);
 
   // Toggle remove ingredient
   const toggleRemoveIngredient = useCallback((ingredient) => {
@@ -332,23 +378,30 @@ const Order = () => {
       ...selectedItem,
       TypeItem: orderType,
       removals,
-      addOns,
+      // Map addOns to include both the name and price of the selected add-ons
+      addOns: addOns.map((addOnName) => {
+        const foundAddOn = availableIngredients.find(
+          (ingredient) => ingredient.Name === addOnName
+        );
+        return {
+          Name: addOnName,
+          Price: foundAddOn ? foundAddOn.Price : 0, // Ensure price is included
+        };
+      }),
       note,
       isOnTheHouse, // Include "On the House" status
       isExistingItem: false, // Mark new items as new
     };
-
+  
     const existingItemIndex = cart.findIndex(
       (cartItem) =>
         cartItem._id === updatedItem._id &&
-        JSON.stringify(cartItem.removals) ===
-          JSON.stringify(updatedItem.removals) &&
-        JSON.stringify(cartItem.addOns) ===
-          JSON.stringify(updatedItem.addOns) &&
+        JSON.stringify(cartItem.removals) === JSON.stringify(updatedItem.removals) &&
+        JSON.stringify(cartItem.addOns) === JSON.stringify(updatedItem.addOns) &&
         cartItem.note === updatedItem.note && // Compare notes
         cartItem.isOnTheHouse === updatedItem.isOnTheHouse // Compare "On the House" status
     );
-
+  
     if (existingItemIndex > -1) {
       const updatedCart = [...cart];
       updatedCart[existingItemIndex].quantity += 1;
@@ -357,7 +410,7 @@ const Order = () => {
     } else {
       setCart([...cart, { ...updatedItem, quantity: 1 }]);
     }
-
+  
     setOpenDialog(false);
   }, [
     selectedItem,
@@ -367,23 +420,238 @@ const Order = () => {
     note,
     isOnTheHouse,
     cart,
+    availableIngredients, // Add availableIngredients as a dependency
   ]);
+  
+
+  const handleSubmitOrder = useCallback(
+    async (selectedPaymentMethod, orderStatus) => {
+      try {
+        const orderData = {
+          Status: orderStatus || 'Pending',
+          PaymentType: selectedPaymentMethod || 'Cash',
+          TableNumber: tableNumber || 'N/A',
+          DeliveryCharge: orderType === 'Delivery' ? deliveryCharge : 0,
+          DefaultStatus: true, // Assuming this is always true for your use case
+          CreatedBy: 'ABeast', // Set based on your system's logged-in user or context
+          Closed_By: 'Abeast Jr', // Example of a closing user, modify if needed
+          Description: 'Very Good Guy',
+          NameOfCustomer: customerInfo?.name || 'Anthony Badr',
+          Location: customerInfo?.address || '123 Main St, Cityville',
+          PhoneNumber: customerInfo?.phone || '879734385735',
+          Items: cart.map((item) => ({
+            OrderDescription: note || '', // Use note or empty string
+            CategoryName: item.CategoryName || '',
+            Name: item.Name,
+            Description: item.Description || '',
+            PriceDineIn: parseFloat(item.price) || 0.0,
+            PriceDelivery: parseFloat(item.pricedel) || 0.0,
+            Quantity: parseFloat(item.quantity) || 1.0,
+            TypeItem: orderType === 'Dine In' ? 'Dine In' : 'TakeAway',
+            Rating: item.rating || 0, // Assuming a rating system exists
+            Ingredients: item.Ingredients || [], // Pass ingredients directly
+            Removals: item.removals || [], // Pass removals array
+            AddOns: item.addOns.map((addOn) => ({
+              Name: addOn.Name || '',
+              Price: parseFloat(addOn.Price) || 0.0,
+            })),
+          })),
+        };
+  
+        console.log('Submitting order data:', orderData);
+  
+        const response = isNewOrder
+          ? await axios.post(
+              `${process.env.REACT_APP_API_URL}/Order/CreateOrder`,
+              orderData
+            )
+          : await axios.put(
+              `${process.env.REACT_APP_API_URL}/Order/UpdateOrderByOrderNumber/${orderNumber}`,
+              orderData
+            );
+  
+        console.log('Order response:', response.data);
+  
+        toast.success(
+          `Order ${isNewOrder ? 'created' : 'updated'} successfully!`
+        );
+  
+        if (isNewOrder) {
+          setOrderNumber(response.data.OrderNumber);
+        }
+  
+        navigate('/staff/dashboard');
+      } catch (error) {
+        console.error('Error submitting order:', error);
+        toast.error('Failed to submit order. Please try again.');
+      }
+    },
+    [
+      cart,
+      customerInfo,
+      isNewOrder,
+      navigate,
+      orderNumber,
+      orderType,
+      tableNumber,
+      calculateTotalPrice,
+      deliveryCharge,
+      note,
+    ]
+  );
+  
+
+  // Printing Functionality
+  const printOrderReceipts = async (cart, orderNumber, customerInfo, paymentMethod) => {
+    const itemsByLocation = cart.reduce((acc, item) => {
+      const location = item.CategoryLocation || 'No Kitchen';
+      if (!acc[location]) {
+        acc[location] = [];
+      }
+      acc[location].push(item);
+      return acc;
+    }, {});
+
+    for (const [location, items] of Object.entries(itemsByLocation)) {
+      if (location === 'No Kitchen') continue;
+      
+      const printData = createPrintData(items, location, orderNumber, customerInfo, paymentMethod);
+      const printerName = getPrinterNameByLocation(location);
+
+      if (printerName) {
+        const printOptions = {
+          preview: false,
+          printerName: printerName,
+          copies: 1,
+          timeOutPerLine: 400,
+          silent: true,
+        };
+        const response = await window.electronAPI.printOrder(printData, printOptions);
+        if (response.success) {
+          console.log(`Order printed successfully to ${location}`);
+        } else {
+          console.error(`Failed to print the order to ${location}`);
+        }
+      }
+    }
+
+    // Print cashier receipt
+    const cashierPrintData = createCashierPrintData(cart, orderNumber, customerInfo, paymentMethod);
+    const cashierPrintOptions = {
+      preview: false,
+      printerName: 'POS-80C-Cashier',
+      copies: 1,
+      timeOutPerLine: 400,
+      silent: true,
+    };
+    const cashierResponse = await window.electronAPI.printOrder(cashierPrintData, cashierPrintOptions);
+    if (cashierResponse.success) {
+      toast.success('Order printed successfully!');
+    } else {
+      toast.error('Failed to print the order.');
+    }
+  };
+
+  const createPrintData = (items, location, orderNumber, customerInfo, paymentMethod) => {
+    const printData = [
+      { type: 'text', value: 'L\'Escale Royale', style: { textAlign: 'center', fontWeight: 'bold', fontSize: '26px' } },
+      { type: 'text', value: '123 Royal Street, Paris, France', style: { textAlign: 'center', fontSize: '14px' } },
+      { type: 'text', value: `Order N°: ${orderNumber}`, style: { textAlign: 'center', fontSize: '18px', fontWeight: 'bold' } },
+      { type: 'text', value: '----------------------------------------', style: { textAlign: 'center' } },
+      { type: 'text', value: `Location: ${location}`, style: { textAlign: 'left', fontSize: '14px', fontWeight: 'bold' } },
+      { type: 'text', value: 'ITEM              QTY         PRICE', style: { textAlign: 'left', fontSize: '14px', fontWeight: 'bold', fontFamily: 'monospace' } },
+    ];
+
+    items.forEach(item => {
+      const itemName = item.Name.padEnd(20, ' ');
+      const quantity = item.quantity.toString().padStart(5, ' ');
+      const price = (calculateItemPrice(item) * item.quantity).toFixed(2).toString().padStart(10, ' ');
+      printData.push({ type: 'text', value: `${itemName}${quantity}${price} CFA`, style: { textAlign: 'left', fontSize: '14px', fontFamily: 'monospace' } });
+
+      if (item.removals && item.removals.length > 0) {
+        item.removals.forEach(removal => {
+          printData.push({ type: 'text', value: `- ${removal.Name}`, style: { textAlign: 'left', fontSize: '12px', color: 'red', fontStyle: 'italic' } });
+        });
+      }
+
+      if (item.addOns && item.addOns.length > 0) {
+        item.addOns.forEach(addOn => {
+          printData.push({ type: 'text', value: `+ ${addOn.Name} (${addOn.Price} CFA)`, style: { textAlign: 'left', fontSize: '12px', color: 'green', fontStyle: 'italic' } });
+        });
+      }
+    });
+
+    return printData;
+  };
+
+  const createCashierPrintData = (cart, orderNumber, customerInfo, paymentMethod) => {
+    const printData = [
+      { type: 'text', value: 'L\'Escale Royale', style: { textAlign: 'center', fontWeight: 'bold', fontSize: '26px' } },
+      { type: 'text', value: '123 Royal Street, Paris, France', style: { textAlign: 'center', fontSize: '14px' } },
+      { type: 'text', value: `Order N°: ${orderNumber}`, style: { textAlign: 'left', fontSize: '14px', fontWeight: 'bold' } },
+      { type: 'text', value: '----------------------------------------', style: { textAlign: 'center' } },
+      { type: 'text', value: 'Item                         Qty     Price', style: { textAlign: 'left', fontSize: '14px', fontWeight: 'bold', fontFamily: 'monospace' } },
+    ];
+
+    cart.forEach(item => {
+      const name = item.Name.padEnd(20, ' ');
+      const qty = item.quantity.toString().padStart(6, ' ');
+      const price = (calculateItemPrice(item) * item.quantity).toFixed(2).toString().padStart(10, ' ');
+      printData.push({ type: 'text', value: `${name}${qty}${price} CFA`, style: { textAlign: 'left', fontSize: '14px', fontFamily: 'monospace' } });
+
+      if (item.addOns && item.addOns.length > 0) {
+        item.addOns.forEach(addOn => {
+          printData.push({ type: 'text', value: `+ ${addOn.Name} (${addOn.Price} CFA)`, style: { textAlign: 'left', fontSize: '12px', fontFamily: 'monospace', color: 'green' } });
+        });
+      }
+
+      if (item.removals && item.removals.length > 0) {
+        item.removals.forEach(removal => {
+          printData.push({ type: 'text', value: `- ${removal.Name}`, style: { textAlign: 'left', fontSize: '12px', fontFamily: 'monospace', color: 'red' } });
+        });
+      }
+    });
+
+    printData.push(
+      { type: 'text', value: '----------------------------------------', style: { textAlign: 'center' } },
+      { type: 'text', value: `Total: ${calculateTotalPrice().toFixed(2)} CFA`, style: { textAlign: 'right', fontSize: '16px', fontWeight: 'bold' } },
+      { type: 'text', value: `Payment Method: ${paymentMethod}`, style: { textAlign: 'right', fontSize: '14px' } }
+    );
+
+    return printData;
+  };
+
+  const getPrinterNameByLocation = (location) => {
+    if (location === 'Kitchen') return 'POS-80C-Kitchen';
+    if (location === 'Pizza Oven') return 'POS-80C-Oven';
+    return null;
+  };
 
   // Handle payment method change
   const handlePaymentMethodChange = useCallback(
     (method) => {
-      setPaymentMethod(method);
+      if (!method) return;
 
-      if (method === 'Cash') {
-        setOpenCashPaymentDialog(true);
-      } else {
-        // Proceed to process the order
-        // Implement your order processing logic here
-        setOpenPaymentDialog(false);
-        navigate('/staff/dashboard');
-      }
+      setPaymentMethod(method);
+      setOpenPaymentDialog(false);
+
+      // Map payment methods to statuses
+      const status = ['Cash', 'Airtel', 'Card'].includes(method)
+        ? 'Done'
+        : method === 'Proceed'
+        ? 'Pending'
+        : method === 'PayLater'
+        ? 'PayLater'
+        : 'Pending';
+
+      setStatus(status);
+
+      // Handle Cash payment separately
+      method === 'Cash'
+        ? setOpenCashPaymentDialog(true)
+        : handleSubmitOrder(method, status);
     },
-    [navigate]
+    [handleSubmitOrder]
   );
 
   // Handle cash payment
@@ -413,16 +681,16 @@ const Order = () => {
     [amountPaidStr, calculateTotalPrice]
   );
 
-  const handleConfirmCashPayment = useCallback(() => {
+  const handleConfirmCashPayment = useCallback(async () => {
     if (amountPaid < calculateTotalPrice()) {
       toast.error('Amount paid is less than the total due.');
       return;
     }
-    // Process the order
-    // Implement your order processing logic here
+
+    setStatus('Done');
+    await handleSubmitOrder('Cash', 'Done');
     setOpenCashPaymentDialog(false);
-    navigate('/staff/dashboard');
-  }, [amountPaid, calculateTotalPrice, navigate]);
+  }, [amountPaid, calculateTotalPrice, handleSubmitOrder]);
 
   // Handle applying discount
   const handleApplyDiscount = useCallback(() => {
@@ -440,6 +708,9 @@ const Order = () => {
   const handleOrderTypeChange = useCallback((event, newType) => {
     if (newType !== null) {
       setOrderType(newType);
+      if (newType === 'Delivery') {
+        setCustomerDialogOpen(true); // Open the customer dialog for delivery
+      }
     }
   }, []);
 
@@ -548,12 +819,14 @@ const Order = () => {
         selectedIngredientCategory={selectedIngredientCategory}
         toggleRemoveIngredient={toggleRemoveIngredient}
         toggleAddIngredient={toggleAddIngredient}
+        setRemovals={setRemovals}
+        setAddOns={setAddOns}
         handleIngredientCategoryChange={handleIngredientCategoryChange}
         handleSaveItem={handleSaveItem}
-        note={note}                // Pass the note state
-        setNote={setNote}          // Pass the function to update the note
-        isOnTheHouse={isOnTheHouse}          // Pass "On the House" status
-        setIsOnTheHouse={setIsOnTheHouse}    // Pass the setter function
+        note={note} // Pass the note state
+        setNote={setNote} // Pass the function to update the note
+        isOnTheHouse={isOnTheHouse} // Pass "On the House" status
+        setIsOnTheHouse={setIsOnTheHouse} // Pass the setter function
       />
 
       {/* Payment Selection Modal */}
@@ -561,8 +834,7 @@ const Order = () => {
         open={openPaymentDialog}
         onClose={() => setOpenPaymentDialog(false)}
         onPaymentMethodSelect={handlePaymentMethodChange}
-        note={note}
-        setNote={setNote}
+        onApplyDiscount={() => setOpenDiscountDialog(true)} // Open discount dialog
       />
 
       {/* Cash Payment Dialog */}
@@ -591,6 +863,11 @@ const Order = () => {
         onAuthorize={handleAuthorizationSuccess}
       />
 
+      <CustomerNumberDialog
+        open={isCustomerDialogOpen}
+        onClose={() => setCustomerDialogOpen(false)}
+        onSubmit={handleCustomerInfoSubmit}
+      />
       <ToastContainer />
     </Container>
   );

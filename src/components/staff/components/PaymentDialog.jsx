@@ -1,4 +1,3 @@
-// components/PaymentDialog.jsx
 
 import React from 'react';
 import {

@@ -35,8 +35,8 @@ const Dashboard = () => {
     const fetchOrders = async () => {
       try {
         // Fetch pending orders
-        const pendingResponse = await axios.get(
-          `${process.env.REACT_APP_API_URL}/Order/GetOrderByStatus/Pending`
+        const pendingResponse = await axios.get(`
+          ${process.env.REACT_APP_API_URL}/Order/GetOrderByStatus/Pending`
         );
         const filteredPendingOrders = pendingResponse.data.filter(
           (order) => order.Type !== 'Dine In'
@@ -44,8 +44,8 @@ const Dashboard = () => {
         setPendingOrders(filteredPendingOrders);
 
         // Fetch pay later orders
-        const payLaterResponse = await axios.get(
-          `${process.env.REACT_APP_API_URL}/Order/GetOrderByStatus/Pay%20Later`
+        const payLaterResponse = await axios.get(`
+          ${process.env.REACT_APP_API_URL}/Order/GetOrderByStatus/Pay%20Later`
         );
         setPayLaterOrders(payLaterResponse.data);
       } catch (error) {
@@ -59,56 +59,68 @@ const Dashboard = () => {
     fetchOrders();
   }, []);
 
+  // Helper to check if a table is occupied
+  const isTableOccupied = (tableNumber) => {
+    return pendingOrders.some(
+      (order) => order.TableNumber === tableNumber.toString()
+    );
+  };
+
+  // Handle table click for Dine In orders
   const handleTableClick = (tableNumber) => {
     const existingOrder = pendingOrders.find(
       (order) => order.TableNumber === tableNumber.toString()
     );
+
     if (existingOrder) {
+      // If there's an existing order, this is not a new order
       setSelectedOrder({
         ...existingOrder,
         TableNumber: tableNumber.toString(),
       });
-      navigate('/staff/order', { state: { orderNumber: existingOrder.OrderNumber } });
+      navigate('/staff/order', { state: { orderNumber: existingOrder.OrderNumber, isNewOrder: false } });
     } else {
+      // If no existing order, this is a new order
       const newOrder = {
         Type: 'Dine In',
         TableNumber: tableNumber.toString(),
         Items: [],
+        isNewOrder: true,
       };
       setSelectedOrder(newOrder);
-      navigate('/staff/order');
+      navigate('/staff/order', { state: { isNewOrder: true } });
     }
   };
 
+  // Handle takeaway order creation
   const handleTakeawayClick = () => {
     const takeawayOrder = {
       Type: 'TakeAway',
       TableNumber: 'N/A', // Set TableNumber to "N/A" for TakeAway orders
       Items: [],
+      isNewOrder: true,
     };
     setSelectedOrder(takeawayOrder);
-    navigate('/staff/order');
+    navigate('/staff/order', { state: { isNewOrder: true } });
   };
 
+  // Handle delivery order creation
   const handleDeliveryClick = () => {
     const deliveryOrder = {
       Type: 'Delivery',
       TableNumber: 'N/A', // Set TableNumber to "N/A" for Delivery orders (if applicable)
       Items: [],
+      CustomerInfo: {},
+      isNewOrder: true,
     };
     setSelectedOrder(deliveryOrder);
-    navigate('/staff/order');
+    navigate('/staff/order', { state: { isNewOrder: true } });
   };
 
+  // Handle existing order click (for pending and pay later orders)
   const handleOrderClick = (order) => {
     setSelectedOrder(order);
-    navigate('/staff/order', { state: { orderNumber: order.OrderNumber } });
-  };
-
-  const isTableOccupied = (tableNumber) => {
-    return pendingOrders.some(
-      (order) => order.TableNumber === tableNumber.toString()
-    );
+    navigate('/staff/order', { state: { orderNumber: order.OrderNumber, isNewOrder: false } });
   };
 
   const handlePayLaterDialogOpen = () => setPayLaterDialogOpen(true);
