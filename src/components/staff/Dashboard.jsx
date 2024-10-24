@@ -118,10 +118,38 @@ const Dashboard = () => {
   };
 
   // Handle existing order click (for pending and pay later orders)
+
   const handleOrderClick = (order) => {
-    setSelectedOrder(order);
+    const mappedCart = order.Items.map((item) => {
+      const basePrice = item.TypeItem === 'Dine In' ? item.PriceDineIn : item.PriceDelivery;
+      
+      // Calculate the total price of add-ons
+      const addOnsPrice = item.AddOns?.reduce((total, addOn) => total + (addOn.Price || 0), 0) || 0;
+  
+      // Calculate the total item price including add-ons
+      const totalPrice = basePrice * (item.Quantity || 1) + addOnsPrice;
+  
+      return {
+        ...item,
+        quantity: item.Quantity || 1,
+        PriceDineIn: item.PriceDineIn || 0,
+        PriceDelivery: item.PriceDelivery || 0,
+        ItemPrice: item.ItemPrice || totalPrice,
+        addOns: item.AddOns || [],
+        removals: item.Removals || [],
+        isExistingItem: true, 
+      };
+    });
+  
+    setSelectedOrder({
+      ...order,
+      Items: mappedCart,
+    });
+  
     navigate('/staff/order', { state: { orderNumber: order.OrderNumber, isNewOrder: false } });
   };
+  
+  
 
   const handlePayLaterDialogOpen = () => setPayLaterDialogOpen(true);
   const handlePayLaterDialogClose = () => setPayLaterDialogOpen(false);

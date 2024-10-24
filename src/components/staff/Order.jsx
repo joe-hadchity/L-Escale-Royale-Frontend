@@ -210,12 +210,9 @@ const Order = () => {
       if (item.isOnTheHouse) {
         return 0;
       }
-  
       const basePrice = orderType === 'Dine In' ? item.price : item.pricedel;
-  
-      // Calculate the total price of add-ons by summing the prices directly
       const addOnsPrice = item.addOns?.reduce((acc, addOn) => {
-        return acc + (addOn.Price || 0); // Use the price directly from the addOn object
+        return acc + (parseFloat(addOn.Price) || 0); 
       }, 0) || 0;
   
       console.log("Item Name:", item.Name);
@@ -228,9 +225,6 @@ const Order = () => {
     },
     [orderType]
   );
-  
-  
-  
   
   // Calculate total price
   const calculateTotalPrice = useCallback(() => {
@@ -421,8 +415,7 @@ const Order = () => {
     isOnTheHouse,
     cart,
     availableIngredients, // Add availableIngredients as a dependency
-  ]);
-  
+  ]);  
 
   const handleSubmitOrder = useCallback(
     async (selectedPaymentMethod, orderStatus) => {
@@ -500,7 +493,6 @@ const Order = () => {
     ]
   );
   
-
   // Printing Functionality
   const printOrderReceipts = async (cart, orderNumber, customerInfo, paymentMethod) => {
     const itemsByLocation = cart.reduce((acc, item) => {

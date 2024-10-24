@@ -91,9 +91,7 @@ const Cart = ({
                           On the House
                         </span>
                       ) : (
-                        `${calculateItemPrice(cartItem)} CFA x ${
-                          cartItem.quantity
-                        }`
+                        `${cartItem.ItemPrice} CFA x ${cartItem.quantity}`
                       )}
                     </Typography>
 
